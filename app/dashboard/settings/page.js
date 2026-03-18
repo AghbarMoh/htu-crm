@@ -14,154 +14,120 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState('')
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchUser()
-  }, [])
+  useEffect(() => { fetchUser() }, [])
 
   const fetchUser = async () => {
-  setLoading(true)
-  const { data: sessionData } = await supabase.auth.getSession()
-  console.log('session:', sessionData)
-  const sessionUser = sessionData?.session?.user
-  console.log('session user:', sessionUser)
-  if (sessionUser) {
-    setUser(sessionUser)
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', sessionUser.id)
-      .single()
-    console.log('profile:', profileData)
-    if (profileData) setProfile(profileData)
+    setLoading(true)
+    const { data: sessionData } = await supabase.auth.getSession()
+    const sessionUser = sessionData?.session?.user
+    if (sessionUser) {
+      setUser(sessionUser)
+      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', sessionUser.id).single()
+      if (profileData) setProfile(profileData)
+    }
+    setLoading(false)
   }
-  setLoading(false)
-}
 
   const handleChangePassword = async () => {
     setPasswordMsg('')
     setPasswordError('')
-
-    if (!newPassword || !confirmPassword) {
-      setPasswordError('Please fill in both fields')
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError('Passwords do not match')
-      return
-    }
-    if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters')
-      return
-    }
-
+    if (!newPassword || !confirmPassword) { setPasswordError('Please fill in both fields'); return }
+    if (newPassword !== confirmPassword) { setPasswordError('Passwords do not match'); return }
+    if (newPassword.length < 6) { setPasswordError('Password must be at least 6 characters'); return }
     const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) {
-      setPasswordError(error.message)
-    } else {
-      setPasswordMsg('Password updated successfully')
-      setNewPassword('')
-      setConfirmPassword('')
-    }
+    if (error) { setPasswordError(error.message) }
+    else { setPasswordMsg('Password updated successfully'); setNewPassword(''); setConfirmPassword('') }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-400">Loading settings...</p>
-      </div>
-    )
+  const s = {
+    input: { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#ffffff', outline: 'none', boxSizing: 'border-box' },
+    label: { display: 'block', fontSize: '12px', fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' },
+    card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '24px', marginBottom: '16px' },
+    sectionTitle: { fontSize: '14px', fontWeight: '600', color: '#ffffff', margin: '0 0 16px 0' },
+    iconBox: (color) => ({ width: '32px', height: '32px', borderRadius: '8px', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '10px' }),
   }
+
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px' }}><p style={{ color: 'rgba(255,255,255,0.3)' }}>Loading settings...</p></div>
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
-        <p className="text-gray-500 text-sm mt-1">Manage your account settings</p>
+      <div style={{ marginBottom: '24px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>Settings</h1>
+        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>Manage your account settings</p>
       </div>
 
-      <div className="max-w-lg space-y-6">
+      <div style={{ maxWidth: '520px' }}>
         {/* Account Info */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <User size={18} className="text-blue-600" />
+        <div style={s.card}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={s.iconBox('rgba(59,130,246,0.2)')}>
+              <User size={16} style={{ color: '#3b82f6' }} />
             </div>
-            <h2 className="font-semibold text-gray-800">Account Information</h2>
+            <h2 style={s.sectionTitle}>Account Information</h2>
           </div>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Full Name</label>
-              <p className="text-sm text-gray-800 bg-gray-50 px-3 py-2 rounded-lg">{profile?.full_name || '-'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Email</label>
-              <p className="text-sm text-gray-800 bg-gray-50 px-3 py-2 rounded-lg">{user?.email || '-'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Role</label>
-              <p className="text-sm text-gray-800 bg-gray-50 px-3 py-2 rounded-lg capitalize">{profile?.role || '-'}</p>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[
+              { label: 'Full Name', value: profile?.full_name || '-' },
+              { label: 'Email', value: user?.email || '-' },
+              { label: 'Role', value: profile?.role || '-' },
+            ].map(item => (
+              <div key={item.label}>
+                <label style={s.label}>{item.label}</label>
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: 'rgba(255,255,255,0.6)', textTransform: item.label === 'Role' ? 'capitalize' : 'none' }}>
+                  {item.value}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Change Password */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-purple-50 rounded-lg">
-              <Lock size={18} className="text-purple-600" />
+        <div style={s.card}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={s.iconBox('rgba(139,92,246,0.2)')}>
+              <Lock size={16} style={{ color: '#8b5cf6' }} />
             </div>
-            <h2 className="font-semibold text-gray-800">Change Password</h2>
+            <h2 style={s.sectionTitle}>Change Password</h2>
           </div>
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Enter new password"
-              />
+              <label style={s.label}>New Password</label>
+              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" style={s.input} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Confirm new password"
-              />
+              <label style={s.label}>Confirm Password</label>
+              <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" style={s.input} />
             </div>
-            {passwordError && <p className="text-red-500 text-sm">{passwordError}</p>}
-            {passwordMsg && <p className="text-green-500 text-sm">{passwordMsg}</p>}
-            <button
-              onClick={handleChangePassword}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition"
-            >
+            {passwordError && <p style={{ fontSize: '12px', color: '#ef4444', margin: 0 }}>{passwordError}</p>}
+            {passwordMsg && <p style={{ fontSize: '12px', color: '#10b981', margin: 0 }}>{passwordMsg}</p>}
+            <button onClick={handleChangePassword} style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#a78bfa', cursor: 'pointer', alignSelf: 'flex-start' }}>
               Update Password
             </button>
           </div>
         </div>
 
-        {/* Role Info */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-green-50 rounded-lg">
-              <Shield size={18} className="text-green-600" />
+        {/* Access Level */}
+        <div style={s.card}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={s.iconBox('rgba(16,185,129,0.2)')}>
+              <Shield size={16} style={{ color: '#10b981' }} />
             </div>
-            <h2 className="font-semibold text-gray-800">Access Level</h2>
+            <h2 style={s.sectionTitle}>Access Level</h2>
           </div>
-          <div className="space-y-2">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {[
-              { role: 'admin', label: 'Admin', desc: 'Full access — can manage all data and users', color: 'bg-red-100 text-red-700' },
-              { role: 'user', label: 'User', desc: 'Full access to all features', color: 'bg-blue-100 text-blue-700' },
-              { role: 'manager', label: 'Manager', desc: 'View-only access to reports and analytics', color: 'bg-green-100 text-green-700' },
+              { role: 'admin', label: 'Admin', desc: 'Full access — can manage all data and users', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+              { role: 'user', label: 'User', desc: 'Full access to all features', color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
+              { role: 'manager', label: 'Manager', desc: 'View-only access to reports and analytics', color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
             ].map((r) => (
-              <div key={r.role} className={"flex items-center gap-3 p-3 rounded-lg " + (profile?.role === r.role ? 'border-2 border-blue-400 bg-blue-50' : 'bg-gray-50')}>
-                <span className={"px-2 py-0.5 rounded-full text-xs font-medium " + r.color}>{r.label}</span>
-                <p className="text-sm text-gray-600">{r.desc}</p>
-                {profile?.role === r.role && <span className="ml-auto text-xs text-blue-600 font-medium">Current</span>}
+              <div key={r.role} style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '10px',
+                background: profile?.role === r.role ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
+                border: profile?.role === r.role ? '1px solid rgba(59,130,246,0.3)' : '1px solid rgba(255,255,255,0.05)',
+              }}>
+                <span style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: r.bg, color: r.color, flexShrink: 0 }}>{r.label}</span>
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0, flex: 1 }}>{r.desc}</p>
+                {profile?.role === r.role && <span style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600', flexShrink: 0 }}>Current</span>}
               </div>
             ))}
           </div>
