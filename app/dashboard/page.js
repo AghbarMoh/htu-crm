@@ -27,12 +27,13 @@ export default function DashboardPage() {
   }, [])
 
   const fetchUser = async () => {
-    const { data } = await supabase.auth.getUser()
-    if (data?.user) {
+    const { data: sessionData } = await supabase.auth.getSession()
+    const sessionUser = sessionData?.session?.user
+    if (sessionUser) {
       const { data: profile } = await supabase
         .from('profiles')
         .select('full_name')
-        .eq('id', data.user.id)
+        .eq('id', sessionUser.id)
         .single()
       setUser(profile)
     }
@@ -70,7 +71,6 @@ export default function DashboardPage() {
     }
 
     if (!recent.error) setRecentApplicants(recent.data)
-
     setLoading(false)
   }
 
@@ -83,46 +83,71 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-400">Loading dashboard...</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '64px' }}>
+        <p style={{ color: 'rgba(255,255,255,0.3)' }}>Loading dashboard...</p>
       </div>
     )
   }
 
+  const cardStyle = {
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '16px',
+    padding: '20px',
+  }
+
+  const statCards = [
+    { label: 'Total Applicants', value: stats.totalApplicants, icon: ClipboardList, color: '#3b82f6', href: '/dashboard/applicants' },
+    { label: 'Paid', value: stats.paidApplicants, icon: CheckCircle, color: '#10b981', href: '/dashboard/applicants' },
+    { label: 'School Visits', value: stats.totalVisits, icon: School, color: '#8b5cf6', href: '/dashboard/school-visits' },
+    { label: 'Visit Students', value: stats.totalVisitStudents, icon: Users, color: '#f59e0b', href: '/dashboard/visit-students' },
+    { label: 'Matched', value: stats.matchedApplicants, icon: CheckCircle, color: '#06b6d4', href: '/dashboard/applicants' },
+    { label: 'Contacts', value: stats.totalContacts, icon: BookUser, color: '#ec4899', href: '/dashboard/contacts' },
+  ]
+
   return (
     <div>
       {/* Welcome */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
+      <div style={{ marginBottom: '28px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>
           Good morning, {user?.full_name?.split(' ')[0] || 'Dalia'} 👋
         </h1>
-        <p className="text-gray-500 text-sm mt-1">
+        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        {[
-          { label: 'Total Applicants', value: stats.totalApplicants, icon: ClipboardList, color: 'text-blue-600 bg-blue-50', href: '/dashboard/applicants' },
-          { label: 'Paid', value: stats.paidApplicants, icon: CheckCircle, color: 'text-green-600 bg-green-50', href: '/dashboard/applicants' },
-          { label: 'School Visits', value: stats.totalVisits, icon: School, color: 'text-purple-600 bg-purple-50', href: '/dashboard/school-visits' },
-          { label: 'Visit Students', value: stats.totalVisitStudents, icon: Users, color: 'text-orange-600 bg-orange-50', href: '/dashboard/visit-students' },
-          { label: 'Matched', value: stats.matchedApplicants, icon: CheckCircle, color: 'text-indigo-600 bg-indigo-50', href: '/dashboard/applicants' },
-          { label: 'Contacts', value: stats.totalContacts, icon: BookUser, color: 'text-pink-600 bg-pink-50', href: '/dashboard/contacts' },
-        ].map((stat) => {
+      {/* Stats Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
+        {statCards.map((stat) => {
           const Icon = stat.icon
           return (
-            <Link key={stat.label} href={stat.href}>
-              <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition cursor-pointer">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
-                    <p className="text-sm text-gray-500 mt-1">{stat.label}</p>
-                  </div>
-                  <div className={"p-3 rounded-xl " + stat.color}>
-                    <Icon size={20} />
-                  </div>
+            <Link key={stat.label} href={stat.href} style={{ textDecoration: 'none' }}>
+              <div style={{
+                ...cardStyle,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'}
+              >
+                <div>
+                  <p style={{ fontSize: '28px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0' }}>{stat.value}</p>
+                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>{stat.label}</p>
+                </div>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '12px',
+                  background: stat.color + '20',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Icon size={18} style={{ color: stat.color }} />
                 </div>
               </div>
             </Link>
@@ -130,49 +155,42 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      {/* Bottom Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         {/* Today's Tasks */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-gray-800">Today's Tasks</h2>
-            <Link href="/dashboard/tasks" className="text-xs text-blue-600 hover:underline">View all</Link>
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', margin: 0 }}>Today's Tasks</h2>
+            <Link href="/dashboard/tasks" style={{ fontSize: '12px', color: '#3b82f6', textDecoration: 'none' }}>View all</Link>
           </div>
           {todayTasks.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">No tasks for today</p>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: '20px 0' }}>No tasks for today</p>
           ) : (
-            <div className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {todayTasks.map(task => (
-                <div key={task.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                  <button
-                    onClick={() => handleCompleteTask(task.id)}
-                    className="text-gray-300 hover:text-green-500 transition"
-                  >
-                    <Circle size={18} />
+                <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)' }}>
+                  <button onClick={() => handleCompleteTask(task.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'rgba(255,255,255,0.25)', display: 'flex' }}>
+                    <Circle size={16} />
                   </button>
                   <div>
-                    <p className="text-sm font-medium text-gray-800">{task.title}</p>
-                    {task.description && <p className="text-xs text-gray-400">{task.description}</p>}
+                    <p style={{ fontSize: '13px', color: '#ffffff', margin: '0 0 2px 0' }}>{task.title}</p>
+                    {task.description && <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>{task.description}</p>}
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Upcoming Tasks */}
           {pendingTasks.length > 0 && (
-            <div className="mt-4">
-              <p className="text-xs text-gray-400 mb-2">Upcoming</p>
-              <div className="space-y-2">
+            <div style={{ marginTop: '16px' }}>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', marginBottom: '8px' }}>Upcoming</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {pendingTasks.map(task => (
-                  <div key={task.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                    <Circle size={16} className={"flex-shrink-0 " + (isOverdue(task.due_date) ? 'text-red-400' : 'text-gray-300')} />
+                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px', borderRadius: '8px' }}>
+                    <Circle size={14} style={{ color: isOverdue(task.due_date) ? '#ef4444' : 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
                     <div>
-                      <p className="text-sm text-gray-700">{task.title}</p>
-                      {task.due_date && (
-                        <p className={"text-xs " + (isOverdue(task.due_date) ? 'text-red-400' : 'text-gray-400')}>
-                          {isOverdue(task.due_date) ? 'Overdue: ' : 'Due: '}{task.due_date}
-                        </p>
-                      )}
+                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', margin: '0 0 1px 0' }}>{task.title}</p>
+                      {task.due_date && <p style={{ fontSize: '11px', color: isOverdue(task.due_date) ? '#ef4444' : 'rgba(255,255,255,0.25)', margin: 0 }}>{isOverdue(task.due_date) ? 'Overdue: ' : 'Due: '}{task.due_date}</p>}
                     </div>
                   </div>
                 ))}
@@ -182,22 +200,29 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Applicants */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-gray-800">Recent Applicants</h2>
-            <Link href="/dashboard/applicants" className="text-xs text-blue-600 hover:underline">View all</Link>
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', margin: 0 }}>Recent Applicants</h2>
+            <Link href="/dashboard/applicants" style={{ fontSize: '12px', color: '#3b82f6', textDecoration: 'none' }}>View all</Link>
           </div>
           {recentApplicants.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">No applicants yet</p>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: '20px 0' }}>No applicants yet</p>
           ) : (
-            <div className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {recentApplicants.map((applicant, i) => (
-                <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50">
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)' }}>
                   <div>
-                    <p className="text-sm font-medium text-gray-800">{applicant.full_name}</p>
-                    <p className="text-xs text-gray-400">{applicant.major || 'No major'}</p>
+                    <p style={{ fontSize: '13px', color: '#ffffff', margin: '0 0 2px 0' }}>{applicant.full_name}</p>
+                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>{applicant.major || 'No major'}</p>
                   </div>
-                  <span className={"px-2 py-0.5 rounded-full text-xs font-medium " + (applicant.paid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')}>
+                  <span style={{
+                    padding: '3px 10px',
+                    borderRadius: '20px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    background: applicant.paid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                    color: applicant.paid ? '#10b981' : '#ef4444',
+                  }}>
                     {applicant.paid ? 'Paid' : 'Not Paid'}
                   </span>
                 </div>

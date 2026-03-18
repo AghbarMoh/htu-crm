@@ -39,15 +39,49 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0">
+    <div style={{
+      height: '100vh',
+      width: '240px',
+      background: 'linear-gradient(180deg, #0f0f13 0%, #1a1a2e 100%)',
+      borderRight: '1px solid rgba(255,255,255,0.06)',
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'fixed',
+      left: 0,
+      top: 0,
+      zIndex: 100,
+    }}>
       {/* Logo */}
-      <div className="p-6 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-blue-600">HTU CRM</h1>
-        <p className="text-xs text-gray-400 mt-1">Outreach Management</p>
+      <div style={{
+        padding: '24px 20px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            boxShadow: '0 4px 12px rgba(59,130,246,0.3)',
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#ffffff', letterSpacing: '-0.3px' }}>HTU CRM</p>
+            <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>Outreach Office</p>
+          </div>
+        </div>
       </div>
 
-      {/* Nav Items */}
-      <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+      {/* Nav */}
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
@@ -55,13 +89,23 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                isActive
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '9px 12px',
+                borderRadius: '10px',
+                marginBottom: '2px',
+                textDecoration: 'none',
+                fontSize: '13px',
+                fontWeight: isActive ? '600' : '400',
+                color: isActive ? '#ffffff' : 'rgba(255,255,255,0.45)',
+                background: isActive ? 'rgba(59,130,246,0.15)' : 'transparent',
+                borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
+                transition: 'all 0.15s',
+              }}
             >
-              <Icon size={18} />
+              <Icon size={16} style={{ flexShrink: 0, color: isActive ? '#3b82f6' : 'rgba(255,255,255,0.35)' }} />
               {item.label}
             </Link>
           )
@@ -69,12 +113,37 @@ export default function Sidebar() {
       </nav>
 
       {/* Sign Out */}
-      <div className="p-4 border-t border-gray-200">
+      <div style={{
+        padding: '12px 10px',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+      }}>
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 w-full transition"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '9px 12px',
+            borderRadius: '10px',
+            width: '100%',
+            border: 'none',
+            background: 'transparent',
+            fontSize: '13px',
+            fontWeight: '400',
+            color: 'rgba(255,255,255,0.35)',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(239,68,68,0.1)'
+            e.currentTarget.style.color = '#f87171'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = 'rgba(255,255,255,0.35)'
+          }}
         >
-          <LogOut size={18} />
+          <LogOut size={16} />
           Sign Out
         </button>
       </div>
