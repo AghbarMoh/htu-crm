@@ -45,9 +45,7 @@ export default function SchoolVisitsPage() {
   }
 
   const fetchCompletions = async () => {
-    const { data, error } = await supabase
-      .from('visit_completions')
-      .select('*')
+    const { data, error } = await supabase.from('visit_completions').select('*')
     if (!error) {
       const map = {}
       data.forEach(c => { map[c.visit_id] = c })
@@ -60,27 +58,12 @@ export default function SchoolVisitsPage() {
       alert('Please fill in school name and visit date')
       return
     }
-
     if (editingVisit) {
-      const { error } = await supabase
-        .from('school_visits')
-        .update(form)
-        .eq('id', editingVisit.id)
-      if (!error) {
-        fetchVisits()
-        setShowForm(false)
-        setEditingVisit(null)
-        setForm(emptyForm)
-      }
+      const { error } = await supabase.from('school_visits').update(form).eq('id', editingVisit.id)
+      if (!error) { fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm) }
     } else {
-      const { error } = await supabase
-        .from('school_visits')
-        .insert([form])
-      if (!error) {
-        fetchVisits()
-        setShowForm(false)
-        setForm(emptyForm)
-      }
+      const { error } = await supabase.from('school_visits').insert([form])
+      if (!error) { fetchVisits(); setShowForm(false); setForm(emptyForm) }
     }
   }
 
@@ -99,10 +82,7 @@ export default function SchoolVisitsPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this visit?')) return
-    const { error } = await supabase
-      .from('school_visits')
-      .delete()
-      .eq('id', id)
+    const { error } = await supabase.from('school_visits').delete().eq('id', id)
     if (!error) fetchVisits()
   }
 
@@ -117,22 +97,15 @@ export default function SchoolVisitsPage() {
     const files = Array.from(e.target.files)
     if (files.length === 0) return
     setUploadingImages(true)
-
     const uploadedUrls = []
     for (const file of files) {
       const fileName = Date.now() + '-' + file.name
-      const { data, error } = await supabase.storage
-        .from('task-images')
-        .upload(fileName, file)
+      const { data, error } = await supabase.storage.from('task-images').upload(fileName, file)
       if (!error && data) {
-        const { data: urlData } = supabase.storage
-          .from('task-images')
-          .getPublicUrl(data.path)
-        console.log('Image URL:', urlData.publicUrl)
+        const { data: urlData } = supabase.storage.from('task-images').getPublicUrl(data.path)
         uploadedUrls.push(urlData.publicUrl)
       }
     }
-
     setCompletionImages(prev => [...prev, ...uploadedUrls])
     setUploadingImages(false)
   }
@@ -142,15 +115,11 @@ export default function SchoolVisitsPage() {
       alert('Please write what you accomplished during this visit')
       return
     }
-
-    const { error } = await supabase
-      .from('visit_completions')
-      .insert([{
-        visit_id: completingVisit.id,
-        comment: completionComment,
-        images: completionImages,
-      }])
-
+    const { error } = await supabase.from('visit_completions').insert([{
+      visit_id: completingVisit.id,
+      comment: completionComment,
+      images: completionImages,
+    }])
     if (!error) {
       setShowCompleteModal(false)
       setCompletingVisit(null)
@@ -160,35 +129,52 @@ export default function SchoolVisitsPage() {
     }
   }
 
-  const filteredVisits = filterType === 'all'
-    ? visits
-    : visits.filter(v => v.type === filterType)
+  const filteredVisits = filterType === 'all' ? visits : visits.filter(v => v.type === filterType)
+
+  const s = {
+    card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' },
+    th: { textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(255,255,255,0.07)' },
+    td: { padding: '12px 16px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
+    input: { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#ffffff', outline: 'none', boxSizing: 'border-box' },
+    label: { display: 'block', fontSize: '12px', fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' },
+    modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, backdropFilter: 'blur(4px)' },
+    modalCard: { background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '440px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', maxHeight: '90vh', overflowY: 'auto' },
+  }
 
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">School Visits</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage all school tours and fair visits</p>
+          <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>School Visits</h1>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>Manage all school tours and fair visits</p>
         </div>
         <button
           onClick={() => { setShowForm(true); setEditingVisit(null); setForm(emptyForm) }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}
         >
-          <Plus size={18} />
+          <Plus size={16} />
           Add Visit
         </button>
       </div>
 
       {/* Filter */}
-      <div className="flex items-center gap-3 mb-4">
-        <Filter size={16} className="text-gray-400" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
         {['all', 'jordan_tour', 'international_fair'].map(type => (
           <button
             key={type}
             onClick={() => setFilterType(type)}
-            className={"px-3 py-1 rounded-full text-sm font-medium transition " + (filterType === type ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: '500',
+              border: 'none',
+              cursor: 'pointer',
+              background: filterType === type ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
+              color: filterType === type ? '#3b82f6' : 'rgba(255,255,255,0.4)',
+              transition: 'all 0.15s',
+            }}
           >
             {type === 'all' ? 'All' : type === 'jordan_tour' ? 'Jordan Tours' : 'International Fairs'}
           </button>
@@ -196,78 +182,69 @@ export default function SchoolVisitsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+      <div style={s.card}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
             <tr>
-              <th className="text-left px-4 py-3 text-gray-600 font-medium">School Name</th>
-              <th className="text-left px-4 py-3 text-gray-600 font-medium">Type</th>
-              <th className="text-left px-4 py-3 text-gray-600 font-medium">City</th>
-              <th className="text-left px-4 py-3 text-gray-600 font-medium">Country</th>
-              <th className="text-left px-4 py-3 text-gray-600 font-medium">Public/Private</th>
-              <th className="text-left px-4 py-3 text-gray-600 font-medium">Visit Date</th>
-              <th className="text-left px-4 py-3 text-gray-600 font-medium">Accomplished</th>
-              <th className="text-left px-4 py-3 text-gray-600 font-medium">Actions</th>
+              {['School Name', 'Type', 'City', 'Country', 'Public/Private', 'Visit Date', 'Accomplished', 'Actions'].map(h => (
+                <th key={h} style={s.th}>{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={8} className="text-center py-8 text-gray-400">Loading...</td>
-              </tr>
+              <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
             ) : filteredVisits.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="text-center py-8 text-gray-400">No visits found</td>
-              </tr>
+              <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No visits found</td></tr>
             ) : (
               filteredVisits.map((visit) => (
-                <tr key={visit.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-800">{visit.school_name}</td>
-                  <td className="px-4 py-3">
-                    <span className={"px-2 py-1 rounded-full text-xs font-medium " + (visit.type === 'jordan_tour' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700')}>
+                <tr key={visit.id} style={{ transition: 'background 0.1s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{visit.school_name}</td>
+                  <td style={s.td}>
+                    <span style={{
+                      padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
+                      background: visit.type === 'jordan_tour' ? 'rgba(59,130,246,0.15)' : 'rgba(139,92,246,0.15)',
+                      color: visit.type === 'jordan_tour' ? '#60a5fa' : '#a78bfa',
+                    }}>
                       {visit.type === 'jordan_tour' ? 'Jordan Tour' : 'International Fair'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{visit.city || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600">{visit.country || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600 capitalize">{visit.private_or_public}</td>
-                  <td className="px-4 py-3 text-gray-600">{visit.visit_date}</td>
-                  <td className="px-4 py-3">
+                  <td style={s.td}>{visit.city || '-'}</td>
+                  <td style={s.td}>{visit.country || '-'}</td>
+                  <td style={s.td}>{visit.private_or_public}</td>
+                  <td style={s.td}>{visit.visit_date}</td>
+                  <td style={s.td}>
                     {completions[visit.id] ? (
                       <div>
-                        <span className="text-xs text-green-600 font-medium">✓ Done</span>
-                        <p className="text-xs text-gray-500 mt-0.5 max-w-xs truncate">{completions[visit.id].comment}</p>
-                        {completions[visit.id].images?.length > 0 && (
-                          <div className="flex gap-1 mt-1">
-                            {completions[visit.id].images.map((url, i) => (
-                              <img key={i} src={url} alt="visit" className="w-8 h-8 rounded object-cover" />
-                            ))}
-                          </div>
-                        )}
+                        <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '600' }}>✓ Done</span>
+                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: '2px 0 0 0', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{completions[visit.id].comment}</p>
                       </div>
                     ) : (
                       <button
                         onClick={() => handleMarkDone(visit)}
-                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-green-600 transition"
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                       >
-                        <CheckCircle size={14} />
+                        <CheckCircle size={13} />
                         Mark Done
                       </button>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleEdit(visit)}
-                        className="p-1 text-gray-400 hover:text-blue-600 transition"
+                  <td style={s.td}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => handleEdit(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '4px', borderRadius: '6px', display: 'flex' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#3b82f6'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
                       >
-                        <Pencil size={16} />
+                        <Pencil size={14} />
                       </button>
-                      <button
-                        onClick={() => handleDelete(visit.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 transition"
+                      <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '4px', borderRadius: '6px', display: 'flex' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </td>
@@ -278,50 +255,45 @@ export default function SchoolVisitsPage() {
         </table>
       </div>
 
-      {/* Add/Edit Form Modal */}
+      {/* Add/Edit Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">
+        <div style={s.modal}>
+          <div style={s.modalCard}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: '0 0 20px 0' }}>
               {editingVisit ? 'Edit Visit' : 'Add New Visit'}
             </h2>
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {[
+                { label: 'School Name *', key: 'school_name', type: 'text', placeholder: 'e.g. Al-Ahliyya School' },
+                { label: 'City', key: 'city', type: 'text', placeholder: 'e.g. Amman' },
+                { label: 'Country', key: 'country', type: 'text', placeholder: 'e.g. Jordan' },
+                { label: 'Visit Date *', key: 'visit_date', type: 'date', placeholder: '' },
+              ].map(field => (
+                <div key={field.key}>
+                  <label style={s.label}>{field.label}</label>
+                  <input type={field.type} value={form[field.key]} onChange={(e) => setForm({ ...form, [field.key]: e.target.value })} placeholder={field.placeholder} style={s.input} />
+                </div>
+              ))}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">School Name *</label>
-                <input type="text" value={form.school_name} onChange={(e) => setForm({ ...form, school_name: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Al-Ahliyya School" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
-                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label style={s.label}>Type *</label>
+                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={s.input}>
                   <option value="jordan_tour">Jordan Tour</option>
                   <option value="international_fair">International Fair</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Amman" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                <input type="text" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Jordan" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Public or Private *</label>
-                <select value={form.private_or_public} onChange={(e) => setForm({ ...form, private_or_public: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label style={s.label}>Public or Private *</label>
+                <select value={form.private_or_public} onChange={(e) => setForm({ ...form, private_or_public: e.target.value })} style={s.input}>
                   <option value="private">Private</option>
                   <option value="public">Public</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Visit Date *</label>
-                <input type="date" value={form.visit_date} onChange={(e) => setForm({ ...form, visit_date: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleSubmit} className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition">
+            <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+              <button onClick={handleSubmit} style={{ flex: 1, background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
                 {editingVisit ? 'Save Changes' : 'Add Visit'}
               </button>
-              <button onClick={() => { setShowForm(false); setEditingVisit(null); setForm(emptyForm) }} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition">
+              <button onClick={() => { setShowForm(false); setEditingVisit(null); setForm(emptyForm) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
                 Cancel
               </button>
             </div>
@@ -331,41 +303,41 @@ export default function SchoolVisitsPage() {
 
       {/* Complete Visit Modal */}
       {showCompleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-gray-800 mb-1">Visit Accomplished</h2>
-            <p className="text-sm text-gray-500 mb-4">"{completingVisit?.school_name}"</p>
-            <div className="space-y-3">
+        <div style={s.modal}>
+          <div style={s.modalCard}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0' }}>Visit Accomplished</h2>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '0 0 20px 0' }}>"{completingVisit?.school_name}"</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">What did you accomplish? *</label>
+                <label style={s.label}>What did you accomplish? *</label>
                 <textarea
                   value={completionComment}
                   onChange={(e) => setCompletionComment(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g. Met with 30 students, collected 25 contacts, spoke with principal..."
+                  placeholder="e.g. Met with 30 students, collected 25 contacts..."
                   rows={4}
+                  style={{ ...s.input, resize: 'vertical' }}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Attach Photos (optional)</label>
-                <label className="flex items-center gap-2 border border-dashed border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-500 cursor-pointer hover:bg-gray-50">
+                <label style={s.label}>Attach Photos (optional)</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px dashed rgba(255,255,255,0.15)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: 'rgba(255,255,255,0.3)', cursor: 'pointer' }}>
                   {uploadingImages ? 'Uploading...' : '+ Add Photos'}
-                  <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" />
+                  <input type="file" accept="image/*" multiple onChange={handleImageUpload} style={{ display: 'none' }} />
                 </label>
                 {completionImages.length > 0 && (
-                  <div className="flex gap-2 mt-2 flex-wrap">
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
                     {completionImages.map((url, i) => (
-                      <img key={i} src={url} alt="upload" className="w-16 h-16 rounded-lg object-cover" />
+                      <img key={i} src={url} alt="upload" style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover' }} />
                     ))}
                   </div>
                 )}
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleCompleteSubmit} className="flex-1 bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 transition">
+            <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+              <button onClick={handleCompleteSubmit} style={{ flex: 1, background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
                 Save
               </button>
-              <button onClick={() => { setShowCompleteModal(false); setCompletingVisit(null) }} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition">
+              <button onClick={() => { setShowCompleteModal(false); setCompletingVisit(null) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
                 Cancel
               </button>
             </div>
