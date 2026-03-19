@@ -15,7 +15,7 @@ export default function ApplicantsPage() {
 
   const majors = ['Energy Engineering', 'Electrical Engineering', 'Game Design and Development', 'Architectural Engineering', 'Cyber Security', 'Computer Science', 'Data Science and AI', 'Industrial Engineering']
 
-  const emptyForm = { full_name: '', phone: '', email: '', username: '', password_raw: '', nationality: '', national_no: '', semester: '', year: '', electronic_payment_no: '', application_no: '', application_date: '', paid: false, heard_about_htu: '', major: '', status: 'red' }
+  const emptyForm = { full_name: '', phone: '', email: '', nationality: '', semester: '', year: '', electronic_payment_no: '', application_no: '', application_date: '', payment_date: '', paid: false, heard_about_htu: '', major: '', status: 'red' }
   const [form, setForm] = useState(emptyForm)
 
   useEffect(() => { fetchApplicants(); runCrossReference() }, [])
@@ -42,11 +42,10 @@ export default function ApplicantsPage() {
     setEditingApplicant(applicant)
     setForm({
       full_name: applicant.full_name || '', phone: applicant.phone || '', email: applicant.email || '',
-      username: applicant.username || '', password_raw: applicant.password_raw || '',
-      nationality: applicant.nationality || '', national_no: applicant.national_no || '',
-      semester: applicant.semester || '', year: applicant.year || '',
+      nationality: applicant.nationality || '', semester: applicant.semester || '', year: applicant.year || '',
       electronic_payment_no: applicant.electronic_payment_no || '', application_no: applicant.application_no || '',
       application_date: applicant.application_date ? applicant.application_date.split('T')[0] : '',
+      payment_date: applicant.payment_date ? applicant.payment_date.split('T')[0] : '',
       paid: applicant.paid || false, heard_about_htu: applicant.heard_about_htu || '',
       major: applicant.major || '', status: applicant.status || 'red',
     })
@@ -64,6 +63,15 @@ export default function ApplicantsPage() {
     if (!error) fetchApplicants()
   }
 
+  const parseExcelDate = (val) => {
+    if (!val) return null
+    if (typeof val === 'number') {
+      return new Date(Math.round((val - 25569) * 86400 * 1000)).toISOString()
+    }
+    const d = new Date(val)
+    return isNaN(d.getTime()) ? null : d.toISOString()
+  }
+
   const handleImport = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -79,25 +87,16 @@ export default function ApplicantsPage() {
         full_name: row['Student Name'] || row['full_name'] || '',
         phone: String(row['Phone number'] || row['phone'] || ''),
         email: row['Email'] || row['email'] || '',
-        username: row['User Name'] || row['username'] || '',
-        password_raw: String(row['Password'] || row['password_raw'] || ''),
         nationality: row['Nationality'] || row['nationality'] || '',
-        national_no: String(row['National No'] || row['national_no'] || ''),
         semester: String(row['Semester'] || row['semester'] || ''),
         year: parseInt(row['Year'] || row['year']) || null,
         electronic_payment_no: String(row['Electronic Payment No'] || row['electronic_payment_no'] || ''),
         application_no: String(row['Application No'] || row['application_no'] || ''),
-        application_date: row['Date'] ? (() => {
-          const val = row['Date']
-          if (typeof val === 'number') {
-            const date = new Date(Math.round((val - 25569) * 86400 * 1000))
-            return date.toISOString()
-          }
-          return new Date(val).toISOString()
-        })() : null,
+        application_date: parseExcelDate(row['Sign up Date'] || row['Date'] || row['application_date']),
+        payment_date: parseExcelDate(row['Payment Date'] || row['payment_date']),
         paid: String(row['Paid'] || '').toUpperCase() === 'YES',
         heard_about_htu: row['How did you first hear about (HTU) and early admission?'] || row['heard_about_htu'] || '',
-        major: row['MAJOR'] || row['major'] || '',
+        major: row['Major'] || row['MAJOR'] || row['major'] || '',
         status: String(row['Paid'] || '').toUpperCase() === 'YES' ? 'green' : 'red',
       })).filter(a => a.full_name)
       if (applicants.length === 0) { alert('No valid applicants found'); setImporting(false); e.target.value = ''; return }
@@ -138,13 +137,12 @@ export default function ApplicantsPage() {
   }
 
   const getRowBg = (status) => status === 'green' ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)'
-
   const filteredApplicants = filterStatus === 'all' ? applicants : applicants.filter(a => a.status === filterStatus)
 
   const s = {
     card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' },
-    th: { textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(255,255,255,0.07)' },
-    td: { padding: '12px 16px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
+    th: { textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(255,255,255,0.07)', whiteSpace: 'nowrap' },
+    td: { padding: '12px 16px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(255,255,255,0.04)', whiteSpace: 'nowrap' },
     input: { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#ffffff', outline: 'none', boxSizing: 'border-box' },
     label: { display: 'block', fontSize: '12px', fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' },
     modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, backdropFilter: 'blur(4px)' },
@@ -164,14 +162,7 @@ export default function ApplicantsPage() {
             {importing ? 'Importing...' : 'Import Excel'}
             <input type="file" accept=".xlsx,.xls" onChange={handleImport} style={{ display: 'none' }} />
           </label>
-          <button
-            onClick={async () => {
-              if (!confirm('Delete ALL applicants?')) return
-              const { error } = await supabase.from('applicants').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-              if (!error) fetchApplicants()
-            }}
-            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', color: '#ef4444', cursor: 'pointer' }}
-          >
+          <button onClick={async () => { if (!confirm('Delete ALL applicants?')) return; const { error } = await supabase.from('applicants').delete().neq('id', '00000000-0000-0000-0000-000000000000'); if (!error) fetchApplicants() }} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', color: '#ef4444', cursor: 'pointer' }}>
             Delete All
           </button>
           <button onClick={() => { setShowForm(true); setEditingApplicant(null); setForm(emptyForm) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
@@ -183,11 +174,7 @@ export default function ApplicantsPage() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
         {['all', 'red', 'green'].map(status => (
-          <button key={status} onClick={() => setFilterStatus(status)} style={{
-            padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '500', border: 'none', cursor: 'pointer',
-            background: filterStatus === status ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
-            color: filterStatus === status ? '#3b82f6' : 'rgba(255,255,255,0.4)',
-          }}>
+          <button key={status} onClick={() => setFilterStatus(status)} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '500', border: 'none', cursor: 'pointer', background: filterStatus === status ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)', color: filterStatus === status ? '#3b82f6' : 'rgba(255,255,255,0.4)' }}>
             {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
           </button>
         ))}
@@ -195,19 +182,19 @@ export default function ApplicantsPage() {
       </div>
 
       <div style={{ ...s.card, overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1200px' }}>
           <thead>
             <tr>
-              {['Name', 'Phone', 'Email', 'Major', 'Paid', 'App No', 'Date', 'Matched', 'Status', 'Actions'].map(h => (
+              {['Name', 'Phone', 'Email', 'Nationality', 'Semester', 'Year', 'Payment No', 'App No', 'Sign Up Date', 'Payment Date', 'Paid', 'Heard About HTU', 'Major', 'Matched', 'Status', 'Actions'].map(h => (
                 <th key={h} style={s.th}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={10} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
+              <tr><td colSpan={16} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
             ) : filteredApplicants.length === 0 ? (
-              <tr><td colSpan={10} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No applicants found</td></tr>
+              <tr><td colSpan={16} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No applicants found</td></tr>
             ) : (
               filteredApplicants.map((applicant) => (
                 <tr key={applicant.id} style={{ background: getRowBg(applicant.status) }}
@@ -220,16 +207,22 @@ export default function ApplicantsPage() {
                   </td>
                   <td style={s.td}>{applicant.phone || '-'}</td>
                   <td style={s.td}>{applicant.email || '-'}</td>
-                  <td style={s.td}>{applicant.major || '-'}</td>
+                  <td style={s.td}>{applicant.nationality || '-'}</td>
+                  <td style={s.td}>{applicant.semester || '-'}</td>
+                  <td style={s.td}>{applicant.year || '-'}</td>
+                  <td style={s.td}>{applicant.electronic_payment_no || '-'}</td>
+                  <td style={s.td}>{applicant.application_no || '-'}</td>
+                  <td style={s.td}>{applicant.application_date ? new Date(applicant.application_date).toLocaleDateString() : '-'}</td>
+                  <td style={s.td}>{applicant.payment_date ? new Date(applicant.payment_date).toLocaleDateString() : '-'}</td>
                   <td style={s.td}>
                     <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: applicant.paid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: applicant.paid ? '#10b981' : '#ef4444' }}>
                       {applicant.paid ? 'Paid' : 'Not Paid'}
                     </span>
                   </td>
-                  <td style={s.td}>{applicant.application_no || '-'}</td>
-                  <td style={s.td}>{applicant.application_date ? new Date(applicant.application_date).toLocaleDateString() : '-'}</td>
+                  <td style={{ ...s.td, maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{applicant.heard_about_htu || '-'}</td>
+                  <td style={s.td}>{applicant.major || '-'}</td>
                   <td style={s.td}>
-                    <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: applicant.is_matched ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)', color: applicant.is_matched ? '#60a5fa' : 'rgba(255,255,255,0.3)' }}>
+                    <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: applicant.is_matched ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)', color: applicant.is_matched ? '#60a5fa' : 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>
                       {applicant.is_matched ? '✓ Matched' : 'No match'}
                     </span>
                   </td>
@@ -269,15 +262,13 @@ export default function ApplicantsPage() {
                 { label: 'Full Name *', key: 'full_name', type: 'text' },
                 { label: 'Phone', key: 'phone', type: 'text' },
                 { label: 'Email', key: 'email', type: 'email' },
-                { label: 'Username', key: 'username', type: 'text' },
-                { label: 'Password', key: 'password_raw', type: 'text' },
                 { label: 'Nationality', key: 'nationality', type: 'text' },
-                { label: 'National No', key: 'national_no', type: 'text' },
                 { label: 'Semester', key: 'semester', type: 'text' },
                 { label: 'Year', key: 'year', type: 'number' },
                 { label: 'Electronic Payment No', key: 'electronic_payment_no', type: 'text' },
                 { label: 'Application No', key: 'application_no', type: 'text' },
-                { label: 'Application Date', key: 'application_date', type: 'date' },
+                { label: 'Sign Up Date', key: 'application_date', type: 'date' },
+                { label: 'Payment Date', key: 'payment_date', type: 'date' },
                 { label: 'How did you hear about HTU?', key: 'heard_about_htu', type: 'text' },
               ].map(field => (
                 <div key={field.key}>
