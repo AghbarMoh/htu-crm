@@ -13,7 +13,8 @@ import {
   MessageSquare,
   BarChart2,
   Settings,
-  LogOut
+  LogOut,
+  Archive
 } from 'lucide-react'
 
 const navItems = [
@@ -21,6 +22,7 @@ const navItems = [
   { label: 'School Visits', href: '/dashboard/school-visits', icon: School },
   { label: 'Visit Students', href: '/dashboard/visit-students', icon: Users },
   { label: 'Applicants', href: '/dashboard/applicants', icon: ClipboardList },
+  { label: 'Archive', href: '/dashboard/archive', icon: Archive },
   { label: 'Contacts', href: '/dashboard/contacts', icon: BookUser },
   { label: 'Tasks & Reminders', href: '/dashboard/tasks', icon: CalendarCheck },
   { label: 'Messaging', href: '/dashboard/messaging', icon: MessageSquare },

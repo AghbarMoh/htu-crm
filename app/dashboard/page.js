@@ -44,12 +44,12 @@ export default function DashboardPage() {
     const today = new Date().toISOString().split('T')[0]
 
     const [a, v, vs, c, tasks, recent] = await Promise.all([
-      supabase.from('applicants').select('id, paid, is_matched'),
+     supabase.from('applicants').select('id, paid, is_matched').eq('is_archived', false),
       supabase.from('school_visits').select('id'),
       supabase.from('visit_students').select('id'),
       supabase.from('contacts').select('id'),
       supabase.from('tasks').select('*').eq('is_done', false).order('due_date'),
-      supabase.from('applicants').select('full_name, major, paid, imported_at').order('imported_at', { ascending: false }).limit(5),
+      supabase.from('applicants').select('full_name, major, paid, imported_at').eq('is_archived', false).order('imported_at', { ascending: false }).limit(5),
     ])
 
     if (!a.error) {
