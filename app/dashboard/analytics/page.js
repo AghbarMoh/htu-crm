@@ -184,6 +184,71 @@ export default function AnalyticsPage() {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      {/* School Conversion Table */}
+      <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '20px', marginTop: '16px' }}>
+        <h2 style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>School Visit Conversion</h2>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['School Name', 'Students Visited', 'Applied', 'Paid', 'Conversion Rate'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const schoolMap = {}
+                visits.forEach(v => {
+                  if (!schoolMap[v.school_name]) schoolMap[v.school_name] = { name: v.school_name, visited: 0, applied: 0, paid: 0 }
+                })
+                visitStudents.forEach(vs => {
+                  const visit = visits.find(v => v.id === vs.visit_id)
+                  if (visit) {
+                    if (!schoolMap[visit.school_name]) schoolMap[visit.school_name] = { name: visit.school_name, visited: 0, applied: 0, paid: 0 }
+                    schoolMap[visit.school_name].visited++
+                    if (vs.is_matched) {
+                      schoolMap[visit.school_name].applied++
+                      const matchedApplicant = applicants.find(a => a.id === vs.matched_applicant_id)
+                      if (matchedApplicant?.paid) schoolMap[visit.school_name].paid++
+                    }
+                  }
+                })
+                const rows = Object.values(schoolMap).sort((a, b) => b.visited - a.visited)
+                if (rows.length === 0) return (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: '30px', fontSize: '13px', color: 'rgba(255,255,255,0.2)' }}>No school visit data yet</td></tr>
+                )
+                return rows.map((row) => (
+                  <tr key={row.name}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#ffffff', fontWeight: '500', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.name}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.visited}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{row.applied}</span>
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>{row.paid}</span>
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px' }}>
+                          <div style={{ height: '100%', borderRadius: '3px', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)', width: row.visited > 0 ? Math.round((row.applied / row.visited) * 100) + '%' : '0%' }} />
+                        </div>
+                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', minWidth: '35px' }}>
+                          {row.visited > 0 ? Math.round((row.applied / row.visited) * 100) + '%' : '0%'}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              })()}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
+    
   )
 }
