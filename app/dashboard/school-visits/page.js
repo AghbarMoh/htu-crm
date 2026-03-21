@@ -1,4 +1,5 @@
 'use client'
+import { FileText } from 'lucide-react'
 import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
@@ -47,11 +48,6 @@ export default function SchoolVisitsPage() {
       setCompletions(map)
     }
   }
-
-  useEffect(() => {
-    fetchVisits()
-    fetchCompletions()
-  }, [])
 
   const handleSubmit = async () => {
     if (!form.school_name || !form.visit_date) {
@@ -138,6 +134,158 @@ export default function SchoolVisitsPage() {
       fetchCompletions()
     }
   }
+  const generatePDF = async (visit = null) => {
+    const { default: jsPDF } = await import('jspdf')
+    const { default: autoTable } = await import('jspdf-autotable')
+
+    const doc = new jsPDF()
+    const isAll = !visit
+
+    // Header
+    doc.setFillColor(15, 15, 19)
+    doc.rect(0, 0, 210, 40, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('HTU Outreach CRM', 14, 18)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text(isAll ? 'All School Visits Report' : 'School Visit Report', 14, 28)
+    doc.setFontSize(9)
+    doc.text('Generated: ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), 14, 36)
+
+    let yPos = 50
+
+    if (isAll) {
+      // Summary stats
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(13)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Summary', 14, yPos)
+      yPos += 8
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Metric', 'Value']],
+        body: [
+          ['Total School Visits', visits.length],
+          ['Jordan Tours', visits.filter(v => v.type === 'jordan_tour').length],
+          ['International Fairs', visits.filter(v => v.type === 'international_fair').length],
+          ['Completed Visits', Object.keys(completions).length],
+          ['Total Students Collected', visitStudents.length],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [59, 130, 246] },
+        margin: { left: 14 },
+      })
+
+      yPos = doc.lastAutoTable.finalY + 14
+
+      // All visits table
+      doc.setFontSize(13)
+      doc.setFont('helvetica', 'bold')
+      doc.text('All Visits', 14, yPos)
+      yPos += 8
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['School Name', 'Type', 'City', 'Country', 'Date', 'Done', 'Students']],
+        body: visits.map(v => [
+          v.school_name,
+          v.type === 'jordan_tour' ? 'Jordan Tour' : 'International Fair',
+          v.city || '-',
+          v.country || '-',
+          v.visit_date || '-',
+          completions[v.id] ? 'Yes' : 'No',
+          visitStudents.filter(vs => vs.visit_id === v.id).length,
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] },
+        margin: { left: 14 },
+      })
+
+    } else {
+      // Single visit
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text(visit.school_name, 14, yPos)
+      yPos += 10
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 100, 100)
+      doc.text('Visit Date: ' + (visit.visit_date || '-'), 14, yPos)
+      doc.text('Type: ' + (visit.type === 'jordan_tour' ? 'Jordan Tour' : 'International Fair'), 80, yPos)
+      doc.text('School Type: ' + (visit.private_or_public || '-'), 150, yPos)
+      yPos += 6
+      doc.text('City: ' + (visit.city || '-'), 14, yPos)
+      doc.text('Country: ' + (visit.country || '-'), 80, yPos)
+      yPos += 14
+
+      // Accomplishment
+      if (completions[visit.id]) {
+        doc.setTextColor(0, 0, 0)
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+        doc.text('What Was Accomplished', 14, yPos)
+        yPos += 8
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(50, 50, 50)
+        const lines = doc.splitTextToSize(completions[visit.id].comment, 180)
+        doc.text(lines, 14, yPos)
+        yPos += lines.length * 6 + 10
+      }
+
+      // Students
+      const students = visitStudents.filter(vs => vs.visit_id === visit.id)
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Students Collected (' + students.length + ')', 14, yPos)
+      yPos += 8
+
+      if (students.length > 0) {
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Name', 'Email', 'Phone', 'Grade', 'Major', 'Matched']],
+          body: students.map(s => [
+            s.full_name,
+            s.email || '-',
+            s.phone || '-',
+            s.grade || '-',
+            s.major_interested || '-',
+            s.is_matched ? 'Yes' : 'No',
+          ]),
+          theme: 'striped',
+          headStyles: { fillColor: [59, 130, 246] },
+          margin: { left: 14 },
+        })
+      } else {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(150, 150, 150)
+        doc.text('No students collected during this visit', 14, yPos)
+      }
+    }
+
+    const filename = isAll ? 'HTU_All_Visits_Report.pdf' : 'HTU_Visit_' + visit.school_name.replace(/\s+/g, '_') + '.pdf'
+    doc.save(filename)
+    await logActivity('Exported PDF', 'school_visit', isAll ? 'All Visits' : visit.school_name, 'PDF report generated')
+  }
+ const [visitStudents, setVisitStudents] = useState([])
+
+  const fetchVisitStudents = async () => {
+    const { data } = await supabase.from('visit_students').select('*')
+    if (data) setVisitStudents(data)
+  }
+
+  useEffect(() => {
+    fetchVisits()
+    fetchCompletions()
+    fetchVisitStudents()
+  }, [])
 
   const filteredVisits = filterType === 'all' ? visits : visits.filter(v => v.type === filterType)
 
@@ -159,13 +307,22 @@ export default function SchoolVisitsPage() {
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>School Visits</h1>
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>Manage all school tours and fair visits</p>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setEditingVisit(null); setForm(emptyForm) }}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}
-        >
-          <Plus size={16} />
-          Add Visit
-        </button>
+       <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => generatePDF(null)}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#f59e0b', cursor: 'pointer' }}
+          >
+            <FileText size={16} />
+            Export All PDF
+          </button>
+          <button
+            onClick={() => { setShowForm(true); setEditingVisit(null); setForm(emptyForm) }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}
+          >
+            <Plus size={16} />
+            Add Visit
+          </button>
+        </div>
       </div>
 
       {/* Filter */}
@@ -250,11 +407,17 @@ export default function SchoolVisitsPage() {
                       >
                         <Pencil size={14} />
                       </button>
-                      <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '4px', borderRadius: '6px', display: 'flex' }}
+                     <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '4px', borderRadius: '6px', display: 'flex' }}
                         onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
                         onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
                       >
                         <Trash2 size={14} />
+                      </button>
+                      <button onClick={() => generatePDF(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '4px', borderRadius: '6px', display: 'flex' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#f59e0b'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
+                      >
+                        <FileText size={14} />
                       </button>
                     </div>
                   </td>
