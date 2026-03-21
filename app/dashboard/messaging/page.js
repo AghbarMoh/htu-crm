@@ -18,6 +18,7 @@ export default function MessagingPage() {
   const [sending, setSending] = useState(false)
   const [filterPaid, setFilterPaid] = useState('all')
   const [filterMajor, setFilterMajor] = useState('all')
+  const [waMessage, setWaMessage] = useState('')
   const supabase = createClient()
 
   const majors = ['Energy Engineering', 'Electrical Engineering', 'Game Design and Development', 'Architectural Engineering', 'Cyber Security', 'Computer Science', 'Data Science and AI', 'Industrial Engineering']
@@ -31,7 +32,7 @@ export default function MessagingPage() {
   useEffect(() => { fetchApplicants(); fetchContacts(); fetchVisitStudents() }, [])
 
   const fetchApplicants = async () => {
-    const { data, error } = await supabase.from('applicants').select('id, full_name, email, phone, paid, major').order('full_name')
+    const { data, error } = await supabase.from('applicants').select('id, full_name, email, phone, paid, major').eq('is_archived', false).order('full_name')
     if (!error) setApplicants(data)
     setLoading(false)
   }
@@ -215,25 +216,130 @@ export default function MessagingPage() {
                 {sending ? 'Opening...' : 'Send Email'}
               </button>
             </div>
-          ) : (
-            <div>
-              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px' }}>Click Open Chat to message someone on WhatsApp directly.</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
-                {currentList.filter(p => p.phone).map((person) => (
-                  <div key={person.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div>
-                      <p style={{ fontSize: '13px', fontWeight: '500', color: '#ffffff', margin: '0 0 2px 0' }}>{person.full_name}</p>
-                      <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>{person.phone}</p>
-                    </div>
-                    <a href={generateWALink(person.phone)} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: '600', color: '#10b981', textDecoration: 'none' }}>
-                      <MessageCircle size={13} />
-                      Open Chat
-                    </a>
-                  </div>
-                ))}
+          ):(
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <div>
+      <label
+        style={{
+          display: 'block',
+          fontSize: '12px',
+          fontWeight: '500',
+          color: 'rgba(255,255,255,0.5)',
+          marginBottom: '6px',
+        }}
+      >
+        Message Template (optional)
+      </label>
+      <textarea
+        value={waMessage}
+        onChange={(e) => setWaMessage(e.target.value)}
+        placeholder="Write a message to pre-fill in WhatsApp... (optional)"
+        rows={4}
+        style={{ ...s.input, resize: 'vertical' }}
+      />
+    </div>
+
+    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
+      {selectedPhones.length > 0
+        ? selectedPhones.length +
+          ' selected — click Open Chat to message each one'
+        : 'Select people from the left panel or use the list below'}
+    </p>
+
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        maxHeight: '320px',
+        overflowY: 'auto',
+      }}
+    >
+      {currentList
+        .filter((p) => p.phone)
+        .map((person) => (
+          <div
+            key={person.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 14px',
+              background: selectedPhones.includes(person.phone)
+                ? 'rgba(16,185,129,0.08)'
+                : 'rgba(255,255,255,0.03)',
+              borderRadius: '10px',
+              border: selectedPhones.includes(person.phone)
+                ? '1px solid rgba(16,185,129,0.3)'
+                : '1px solid rgba(255,255,255,0.06)',
+              cursor: 'pointer',
+            }}
+            onClick={() => togglePhone(person.phone)}
+          >
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+            >
+              <input
+                type="checkbox"
+                checked={selectedPhones.includes(person.phone)}
+                onChange={() => {}}
+                style={{ accentColor: '#10b981' }}
+              />
+              <div>
+                <p
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    color: '#ffffff',
+                    margin: '0 0 2px 0',
+                  }}
+                >
+                  {person.full_name}
+                </p>
+                <p
+                  style={{
+                    fontSize: '11px',
+                    color: 'rgba(255,255,255,0.3)',
+                    margin: 0,
+                  }}
+                >
+                  {person.phone}
+                </p>
               </div>
             </div>
-          )}
+
+            <a
+              href={
+                generateWALink(person.phone) +
+                (waMessage
+                  ? '?text=' + encodeURIComponent(waMessage)
+                  : '')
+              }
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(16,185,129,0.15)',
+                border: '1px solid rgba(16,185,129,0.3)',
+                borderRadius: '8px',
+                padding: '6px 14px',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#10b981',
+                textDecoration: 'none',
+              }}
+            >
+              <MessageCircle size={13} />
+              Open Chat
+            </a>
+          </div>
+        ))}
+    </div>
+  </div>
+)}
         </div>
       </div>
     </div>
