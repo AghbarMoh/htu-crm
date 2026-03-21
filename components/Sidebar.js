@@ -14,7 +14,8 @@ import {
   BarChart2,
   Settings,
   LogOut,
-  Archive
+  Archive,
+  Activity
 } from 'lucide-react'
 
 const navItems = [
@@ -27,6 +28,7 @@ const navItems = [
   { label: 'Tasks & Reminders', href: '/dashboard/tasks', icon: CalendarCheck },
   { label: 'Messaging', href: '/dashboard/messaging', icon: MessageSquare },
   { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart2 },
+  { label: 'Activity Log', href: '/dashboard/activity', icon: Activity },
   { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
 

@@ -1,5 +1,5 @@
 'use client'
-
+import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Mail, MessageCircle, Send, Users, BookUser, School } from 'lucide-react'
@@ -75,6 +75,7 @@ export default function MessagingPage() {
     setSending(true)
     const { error } = await supabase.from('messages_log').insert([{ channel: 'email', recipients: selectedEmails, subject: emailSubject, body: emailBody }])
     if (!error) {
+      await logActivity('Sent bulk email', 'messaging', emailSubject, 'Sent to ' + selectedEmails.length + ' recipients')
       const mailtoLink = 'mailto:' + selectedEmails.join(',') + '?subject=' + encodeURIComponent(emailSubject) + '&body=' + encodeURIComponent(emailBody)
       window.location.href = mailtoLink
       alert('Email client opened with ' + selectedEmails.length + ' recipients.')

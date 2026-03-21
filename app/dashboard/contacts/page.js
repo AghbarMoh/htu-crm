@@ -1,5 +1,5 @@
 'use client'
-
+import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Plus, Pencil, Trash2, Mail, Phone } from 'lucide-react'
@@ -29,10 +29,16 @@ export default function ContactsPage() {
     if (!form.full_name) { alert('Please fill in contact name'); return }
     if (editingContact) {
       const { error } = await supabase.from('contacts').update(form).eq('id', editingContact.id)
-      if (!error) { fetchContacts(); setShowForm(false); setEditingContact(null); setForm(emptyForm) }
+      if (!error) {
+        await logActivity('Edited contact', 'contact', form.full_name, 'Updated contact details')
+        fetchContacts(); setShowForm(false); setEditingContact(null); setForm(emptyForm)
+      }
     } else {
       const { error } = await supabase.from('contacts').insert([form])
-      if (!error) { fetchContacts(); setShowForm(false); setForm(emptyForm) }
+      if (!error) {
+        await logActivity('Added contact', 'contact', form.full_name, 'New contact added — ' + form.role)
+        fetchContacts(); setShowForm(false); setForm(emptyForm)
+      }
     }
   }
 
@@ -44,8 +50,12 @@ export default function ContactsPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure?')) return
+    const contact = contacts.find(c => c.id === id)
     const { error } = await supabase.from('contacts').delete().eq('id', id)
-    if (!error) fetchContacts()
+    if (!error) {
+      await logActivity('Deleted contact', 'contact', contact?.full_name, 'Contact removed')
+      fetchContacts()
+    }
   }
 
   const filteredContacts = filterRole === 'all' ? contacts : contacts.filter(c => c.role === filterRole)

@@ -1,5 +1,5 @@
 'use client'
-
+import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Plus, Pencil, Trash2, CheckCircle, Circle } from 'lucide-react'
@@ -20,26 +20,33 @@ export default function TasksPage() {
   const emptyForm = { title: '', description: '', due_date: '' }
   const [form, setForm] = useState(emptyForm)
 
-  useEffect(() => { fetchTasks() }, [])
-
-  const fetchTasks = async () => {
+ const fetchTasks = async () => {
     setLoading(true)
     const { data, error } = await supabase.from('tasks').select('*, task_completions(*)').order('due_date', { ascending: true })
     if (!error) setTasks(data)
     setLoading(false)
   }
 
+  useEffect(() => {
+    fetchTasks()
+  }, [])
+
   const handleSubmit = async () => {
     if (!form.title) { alert('Please fill in task title'); return }
     if (editingTask) {
       const { error } = await supabase.from('tasks').update(form).eq('id', editingTask.id)
-      if (!error) { fetchTasks(); setShowForm(false); setEditingTask(null); setForm(emptyForm) }
+      if (!error) {
+        await logActivity('Edited task', 'task', form.title, 'Task details updated')
+        fetchTasks(); setShowForm(false); setEditingTask(null); setForm(emptyForm)
+      }
     } else {
       const { error } = await supabase.from('tasks').insert([form])
-      if (!error) { fetchTasks(); setShowForm(false); setForm(emptyForm) }
+      if (!error) {
+        await logActivity('Added task', 'task', form.title, 'New task created' + (form.due_date ? ' due ' + form.due_date : ''))
+        fetchTasks(); setShowForm(false); setForm(emptyForm)
+      }
     }
   }
-
   const handleEdit = (task) => {
     setEditingTask(task)
     setForm({ title: task.title || '', description: task.description || '', due_date: task.due_date || '' })
@@ -48,8 +55,12 @@ export default function TasksPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure?')) return
+    const task = tasks.find(t => t.id === id)
     const { error } = await supabase.from('tasks').delete().eq('id', id)
-    if (!error) fetchTasks()
+    if (!error) {
+      await logActivity('Deleted task', 'task', task?.title, 'Task removed')
+      fetchTasks()
+    }
   }
 
   const handleMarkDone = (task) => {
@@ -65,7 +76,8 @@ export default function TasksPage() {
     setUploadingImages(true)
     const uploadedUrls = []
     for (const file of files) {
-      const fileName = Date.now() + '-' + file.name
+      const timestamp = new Date().getTime()
+      const fileName = timestamp + '-' + file.name
       const { data, error } = await supabase.storage.from('task-images').upload(fileName, file)
       if (!error && data) {
         const { data: urlData } = supabase.storage.from('task-images').getPublicUrl(data.path)
@@ -76,11 +88,12 @@ export default function TasksPage() {
     setUploadingImages(false)
   }
 
-  const handleCompleteSubmit = async () => {
+ const handleCompleteSubmit = async () => {
     if (!completionComment) { alert('Please write what you achieved'); return }
     const { error: completionError } = await supabase.from('task_completions').insert([{ task_id: completingTask.id, comment: completionComment, images: completionImages }])
     if (!completionError) {
       await supabase.from('tasks').update({ is_done: true }).eq('id', completingTask.id)
+      await logActivity('Completed task', 'task', completingTask?.title, completionComment)
       setShowCompleteModal(false)
       setCompletingTask(null)
       setCompletionComment('')
@@ -88,7 +101,6 @@ export default function TasksPage() {
       fetchTasks()
     }
   }
-
   const handleReopen = async (id) => {
     await supabase.from('tasks').update({ is_done: false }).eq('id', id)
     fetchTasks()

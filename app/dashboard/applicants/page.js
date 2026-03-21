@@ -1,5 +1,5 @@
 'use client'
-
+import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Plus, Pencil, Trash2, Upload, Search, Archive } from 'lucide-react'
@@ -39,10 +39,16 @@ export default function ApplicantsPage() {
     if (!form.full_name) { alert('Please fill in student name'); return }
     if (editingApplicant) {
       const { error } = await supabase.from('applicants').update(form).eq('id', editingApplicant.id)
-      if (!error) { fetchApplicants(); setShowForm(false); setEditingApplicant(null); setForm(emptyForm) }
+      if (!error) {
+        await logActivity('Edited applicant', 'applicant', form.full_name, 'Updated applicant details')
+        fetchApplicants(); setShowForm(false); setEditingApplicant(null); setForm(emptyForm)
+      }
     } else {
       const { error } = await supabase.from('applicants').insert([form])
-      if (!error) { fetchApplicants(); setShowForm(false); setForm(emptyForm) }
+      if (!error) {
+        await logActivity('Added applicant', 'applicant', form.full_name, 'New applicant added manually')
+        fetchApplicants(); setShowForm(false); setForm(emptyForm)
+      }
     }
   }
 
@@ -62,13 +68,21 @@ export default function ApplicantsPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure?')) return
+    const applicant = applicants.find(a => a.id === id)
     const { error } = await supabase.from('applicants').delete().eq('id', id)
-    if (!error) fetchApplicants()
+    if (!error) {
+      await logActivity('Deleted applicant', 'applicant', applicant?.full_name, 'Applicant removed')
+      fetchApplicants()
+    }
   }
 
   const handleStatusChange = async (id, newStatus) => {
+    const applicant = applicants.find(a => a.id === id)
     const { error } = await supabase.from('applicants').update({ status: newStatus }).eq('id', id)
-    if (!error) fetchApplicants()
+    if (!error) {
+      await logActivity('Changed status', 'applicant', applicant?.full_name, 'Status changed to ' + newStatus)
+      fetchApplicants()
+    }
   }
 
   const parseExcelDate = (val) => {
@@ -107,7 +121,11 @@ export default function ApplicantsPage() {
       })).filter(a => a.full_name)
       if (applicants.length === 0) { alert('No valid applicants found'); setImporting(false); e.target.value = ''; return }
       const { error } = await supabase.from('applicants').insert(applicants)
-      if (!error) { alert('Successfully imported ' + applicants.length + ' applicants'); fetchApplicants(); runCrossReference() }
+     if (!error) {
+  await logActivity('Imported applicants', 'applicant', file.name, 'Imported ' + applicants.length + ' applicants from Excel')
+  alert('Successfully imported ' + applicants.length + ' applicants')
+  fetchApplicants(); runCrossReference()
+}
       else alert('Error: ' + error.message)
       setImporting(false); e.target.value = ''
     }
@@ -124,12 +142,13 @@ export default function ApplicantsPage() {
       .update({ is_archived: true, archive_label: archiveLabel, archived_at: today })
       .eq('is_archived', false)
 
-    if (!error) {
+   if (!error) {
+      await logActivity('Archived applicants', 'applicant', archiveLabel, 'Archived ' + applicants.length + ' applicants')
       alert('Successfully archived ' + applicants.length + ' applicants')
       setShowArchiveModal(false)
       setArchiveLabel('')
       fetchApplicants()
-    } else {
+    }else {
       alert('Error archiving: ' + error.message)
     }
     setArchiving(false)

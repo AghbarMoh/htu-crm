@@ -1,5 +1,5 @@
 'use client'
-
+import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Plus, Pencil, Trash2, CheckCircle, Filter } from 'lucide-react'
@@ -29,11 +29,6 @@ export default function SchoolVisitsPage() {
 
   const [form, setForm] = useState(emptyForm)
 
-  useEffect(() => {
-    fetchVisits()
-    fetchCompletions()
-  }, [])
-
   const fetchVisits = async () => {
     setLoading(true)
     const { data, error } = await supabase
@@ -53,6 +48,11 @@ export default function SchoolVisitsPage() {
     }
   }
 
+  useEffect(() => {
+    fetchVisits()
+    fetchCompletions()
+  }, [])
+
   const handleSubmit = async () => {
     if (!form.school_name || !form.visit_date) {
       alert('Please fill in school name and visit date')
@@ -60,13 +60,18 @@ export default function SchoolVisitsPage() {
     }
     if (editingVisit) {
       const { error } = await supabase.from('school_visits').update(form).eq('id', editingVisit.id)
-      if (!error) { fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm) }
+      if (!error) {
+        await logActivity('Edited school visit', 'school_visit', form.school_name, 'Updated visit details')
+        fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm)
+      }
     } else {
       const { error } = await supabase.from('school_visits').insert([form])
-      if (!error) { fetchVisits(); setShowForm(false); setForm(emptyForm) }
+      if (!error) {
+        await logActivity('Added school visit', 'school_visit', form.school_name, 'New school visit on ' + form.visit_date)
+        fetchVisits(); setShowForm(false); setForm(emptyForm)
+      }
     }
   }
-
   const handleEdit = (visit) => {
     setEditingVisit(visit)
     setForm({
@@ -82,8 +87,12 @@ export default function SchoolVisitsPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this visit?')) return
+    const visit = visits.find(v => v.id === id)
     const { error } = await supabase.from('school_visits').delete().eq('id', id)
-    if (!error) fetchVisits()
+    if (!error) {
+      await logActivity('Deleted school visit', 'school_visit', visit?.school_name, 'School visit removed')
+      fetchVisits()
+    }
   }
 
   const handleMarkDone = (visit) => {
@@ -121,6 +130,7 @@ export default function SchoolVisitsPage() {
       images: completionImages,
     }])
     if (!error) {
+      await logActivity('Completed school visit', 'school_visit', completingVisit?.school_name, completionComment)
       setShowCompleteModal(false)
       setCompletingVisit(null)
       setCompletionComment('')

@@ -1,5 +1,5 @@
 'use client'
-
+import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Search, ChevronDown, ChevronUp } from 'lucide-react'
@@ -109,11 +109,12 @@ export default function ArchivePage() {
                   </span>
                 </div>
                 <button
-                  onClick={async (e) => {
+                 onClick={async (e) => {
                     e.stopPropagation()
                     if (!confirm('Delete this entire archive batch?')) return
                     const ids = archive.applicants.map(a => a.id)
                     await supabase.from('applicants').delete().in('id', ids)
+                    await logActivity('Deleted archive batch', 'archive', archive.label, 'Deleted ' + archive.applicants.length + ' archived applicants')
                     fetchArchives()
                   }}
                   style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '4px 12px', fontSize: '11px', fontWeight: '600', color: '#ef4444', cursor: 'pointer' }}
