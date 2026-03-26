@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { Download } from 'lucide-react'
 
+
 export default function AnalyticsPage() {
   const [applicants, setApplicants] = useState([])
   const [visits, setVisits] = useState([])
@@ -14,6 +15,8 @@ export default function AnalyticsPage() {
   const supabase = createClient()
 
   useEffect(() => { fetchAll() }, [])
+
+
 
   const fetchAll = async () => {
     setLoading(true)
@@ -37,6 +40,8 @@ export default function AnalyticsPage() {
   const totalVisits = visits.length
   const totalVisitStudents = visitStudents.length
   const totalContacts = contacts.length
+  const newVisitsCount = visits.filter(v => v.connection_status === 'New' || !v.connection_status).length;
+  const repeatedVisitsCount = visits.filter(v => v.connection_status === 'Repeated').length;
 
   const majorCounts = {}
   applicants.forEach(a => { if (a.major) majorCounts[a.major] = (majorCounts[a.major] || 0) + 1 })
@@ -88,16 +93,18 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '24px' }}>
         {[
           { label: 'Total Applicants', value: totalApplicants, color: '#3b82f6' },
           { label: 'Paid', value: paidApplicants, color: '#10b981' },
-          { label: 'Not Paid', value: notPaidApplicants, color: '#ef4444' },
           { label: 'Matched with Visits', value: matchedApplicants, color: '#8b5cf6' },
+          { label: 'Conversion Rate', value: totalVisitStudents > 0 ? Math.round((matchedApplicants / totalVisitStudents) * 100) + '%' : '0%', color: '#06b6d4' },
           { label: 'School Visits', value: totalVisits, color: '#f59e0b' },
+          { label: 'New Schools', value: newVisitsCount, color: '#10b981' },
+          { label: 'Repeated Schools', value: repeatedVisitsCount, color: '#8b5cf6' },
           { label: 'Visit Students', value: totalVisitStudents, color: '#f97316' },
           { label: 'Contacts', value: totalContacts, color: '#ec4899' },
-          { label: 'Conversion Rate', value: totalVisitStudents > 0 ? Math.round((matchedApplicants / totalVisitStudents) * 100) + '%' : '0%', color: '#06b6d4' },
+          { label: 'Not Paid', value: notPaidApplicants, color: '#ef4444' },
         ].map((stat) => (
           <div key={stat.label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '14px', padding: '16px' }}>
             <p style={{ fontSize: '24px', fontWeight: '700', color: stat.color, margin: '0 0 4px 0' }}>{stat.value}</p>

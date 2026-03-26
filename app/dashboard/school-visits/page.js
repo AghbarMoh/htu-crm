@@ -3,7 +3,7 @@ import { FileText } from 'lucide-react'
 import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
-import { Plus, Pencil, Trash2, CheckCircle, Filter } from 'lucide-react'
+import { Plus, Pencil, Trash2, CheckCircle, Filter, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
 
 export default function SchoolVisitsPage() {
   const [visits, setVisits] = useState([])
@@ -17,25 +17,29 @@ export default function SchoolVisitsPage() {
   const [completionImages, setCompletionImages] = useState([])
   const [uploadingImages, setUploadingImages] = useState(false)
   const [completions, setCompletions] = useState({})
+  const [isCompletedCollapsed, setIsCompletedCollapsed] = useState(false)
   const supabase = createClient()
 
-  const emptyForm = {
+ const emptyForm = {
     school_name: '',
-    type: 'jordan_tour',
+    type: 'School Tours',
     city: '',
     country: '',
     private_or_public: 'private',
     visit_date: '',
+    visit_time: '',
+    connection_status: 'New',
   }
 
   const [form, setForm] = useState(emptyForm)
 
-  const fetchVisits = async () => {
+ const fetchVisits = async () => {
     setLoading(true)
     const { data, error } = await supabase
       .from('school_visits')
       .select('*')
-      .order('visit_date', { ascending: false })
+      .order('visit_date', { ascending: true }) // Earliest dates first
+      .order('visit_time', { ascending: true }) // If same date, sort by earliest time
     if (!error) setVisits(data)
     setLoading(false)
   }
@@ -54,21 +58,39 @@ export default function SchoolVisitsPage() {
       alert('Please fill in school name and visit date')
       return
     }
+
+    // Sanitize the payload: Convert empty strings to null for database constraints
+    const payload = {
+      ...form,
+      visit_time: form.visit_time === '' ? null : form.visit_time,
+    }
+
     if (editingVisit) {
-      const { error } = await supabase.from('school_visits').update(form).eq('id', editingVisit.id)
-      if (!error) {
-        await logActivity('Edited school visit', 'school_visit', form.school_name, 'Updated visit details')
+      // We added .select() at the end to force Supabase to return the changed row
+      const { data, error } = await supabase.from('school_visits').update(payload).eq('id', editingVisit.id).select()
+      
+      if (error) {
+        alert('Supabase Update Error: ' + error.message)
+      } else if (!data || data.length === 0) {
+        alert('Silent Failure: Supabase did not update any rows. Check RLS policies!')
+      } else {
+        await logActivity('Edited school visit', 'school_visit', payload.school_name, 'Updated visit details')
         fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm)
       }
     } else {
-      const { error } = await supabase.from('school_visits').insert([form])
-      if (!error) {
-        await logActivity('Added school visit', 'school_visit', form.school_name, 'New school visit on ' + form.visit_date)
-        fetchVisits(); setShowForm(false); setForm(emptyForm)
+      const { data, error } = await supabase.from('school_visits').insert([payload]).select()
+      
+      if (error) {
+        alert('Supabase Insert Error: ' + error.message)
+      } else if (!data || data.length === 0) {
+        alert('Silent Failure: Supabase did not insert any rows. Check RLS policies!')
+      } else {
+        await logActivity('Created school visit', 'school_visit', payload.school_name, 'New visit added')
+        fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm)
       }
     }
   }
-  const handleEdit = (visit) => {
+ const handleEdit = (visit) => {
     setEditingVisit(visit)
     setForm({
       school_name: visit.school_name,
@@ -77,6 +99,8 @@ export default function SchoolVisitsPage() {
       country: visit.country || '',
       private_or_public: visit.private_or_public,
       visit_date: visit.visit_date,
+      visit_time: visit.visit_time || '',
+      connection_status: visit.connection_status || 'New',
     })
     setShowForm(true)
   }
@@ -134,145 +158,134 @@ export default function SchoolVisitsPage() {
       fetchCompletions()
     }
   }
-  const generatePDF = async (visit = null) => {
-    const { default: jsPDF } = await import('jspdf')
-    const { default: autoTable } = await import('jspdf-autotable')
 
-    const doc = new jsPDF()
-    const isAll = !visit
+const handleUndoComplete = async (visitId) => {
+    if (!confirm('Are you sure you want to undo this completion?')) return
+    const { error } = await supabase.from('visit_completions').delete().eq('visit_id', visitId)
+    if (!error) {
+      await logActivity('Undid visit completion', 'school_visit', visits.find(v=>v.id===visitId)?.school_name, 'Moved back to pending')
+      fetchCompletions()
+    } else {
+      alert('Error undoing: ' + error.message)
+    }
+  }
+
+  const generateWord = async (visit = null) => {
+    alert('Generating Word Document...');
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType } = await import('docx');
+    const { saveAs } = await import('file-saver');
+
+    const isAll = !visit;
+    const sections = [];
 
     // Header
-    doc.setFillColor(15, 15, 19)
-    doc.rect(0, 0, 210, 40, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(20)
-    doc.setFont('helvetica', 'bold')
-    doc.text('HTU Outreach CRM', 14, 18)
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'normal')
-    doc.text(isAll ? 'All School Visits Report' : 'School Visit Report', 14, 28)
-    doc.setFontSize(9)
-    doc.text('Generated: ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), 14, 36)
-
-    let yPos = 50
+    sections.push(
+      new Paragraph({
+        text: "HTU Outreach CRM",
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.CENTER,
+      }),
+      new Paragraph({
+        text: isAll ? "All School Visits Report" : "School Visit Report",
+        heading: HeadingLevel.HEADING_2,
+        alignment: AlignmentType.CENTER,
+      }),
+      new Paragraph({
+        text: 'Generated: ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 },
+      })
+    );
 
     if (isAll) {
-      // Summary stats
-      doc.setTextColor(0, 0, 0)
-      doc.setFontSize(13)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Summary', 14, yPos)
-      yPos += 8
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Metric', 'Value']],
-        body: [
-          ['Total School Visits', visits.length],
-          ['Jordan Tours', visits.filter(v => v.type === 'jordan_tour').length],
-          ['International Fairs', visits.filter(v => v.type === 'international_fair').length],
-          ['Completed Visits', Object.keys(completions).length],
-          ['Total Students Collected', visitStudents.length],
+      // Summary Stats
+      sections.push(new Paragraph({ text: "Summary", heading: HeadingLevel.HEADING_3, spacing: { before: 200, after: 200 } }));
+      
+      const summaryTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Metric", bold: true })] })] }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Value", bold: true })] })] }),
+            ],
+          }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph("Total School Visits")] }), new TableCell({ children: [new Paragraph(String(visits.length))] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph("Completed Visits")] }), new TableCell({ children: [new Paragraph(String(Object.keys(completions).length))] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph("Total Students Collected")] }), new TableCell({ children: [new Paragraph(String(visitStudents.length))] })] }),
         ],
-        theme: 'grid',
-        headStyles: { fillColor: [59, 130, 246] },
-        margin: { left: 14 },
-      })
+      });
+      sections.push(summaryTable);
 
-      yPos = doc.lastAutoTable.finalY + 14
+      // All Visits Data
+      sections.push(new Paragraph({ text: "All Visits", heading: HeadingLevel.HEADING_3, spacing: { before: 400, after: 200 } }));
 
-      // All visits table
-      doc.setFontSize(13)
-      doc.setFont('helvetica', 'bold')
-      doc.text('All Visits', 14, yPos)
-      yPos += 8
+      const headerRow = new TableRow({
+        children: ['School Name', 'Type', 'City', 'Country', 'Date', 'Time', 'Status', 'Done', 'Students'].map(
+          text => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })] })
+        ),
+      });
 
-      autoTable(doc, {
-        startY: yPos,
-        head: [['School Name', 'Type', 'City', 'Country', 'Date', 'Done', 'Students']],
-        body: visits.map(v => [
-          v.school_name,
-          v.type === 'jordan_tour' ? 'Jordan Tour' : 'International Fair',
-          v.city || '-',
-          v.country || '-',
-          v.visit_date || '-',
-          completions[v.id] ? 'Yes' : 'No',
-          visitStudents.filter(vs => vs.visit_id === v.id).length,
-        ]),
-        theme: 'striped',
-        headStyles: { fillColor: [59, 130, 246] },
-        margin: { left: 14 },
-      })
+      const dataRows = visits.map(v => new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph(v.school_name)] }),
+          new TableCell({ children: [new Paragraph(v.type)] }),
+          new TableCell({ children: [new Paragraph(v.city || '-')] }),
+          new TableCell({ children: [new Paragraph(v.country || '-')] }),
+          new TableCell({ children: [new Paragraph(v.visit_date || '-')] }),
+          new TableCell({ children: [new Paragraph(v.visit_time || '-')] }),
+          new TableCell({ children: [new Paragraph(v.connection_status || 'New')] }),
+          new TableCell({ children: [new Paragraph(completions[v.id] ? 'Yes' : 'No')] }),
+          new TableCell({ children: [new Paragraph(String(visitStudents.filter(vs => vs.visit_id === v.id).length))] }),
+        ]
+      }));
+
+      sections.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...dataRows] }));
 
     } else {
-      // Single visit
-      doc.setTextColor(0, 0, 0)
-      doc.setFontSize(16)
-      doc.setFont('helvetica', 'bold')
-      doc.text(visit.school_name, 14, yPos)
-      yPos += 10
+      // Single Visit Data
+      sections.push(
+        new Paragraph({ text: visit.school_name, heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 200 } }),
+        new Paragraph(`Visit Date: ${visit.visit_date || '-'} | Time: ${visit.visit_time || '-'}`),
+        new Paragraph(`Type: ${visit.type}`),
+        new Paragraph(`School Type: ${visit.private_or_public || '-'}`),
+        new Paragraph(`City: ${visit.city || '-'} | Country: ${visit.country || '-'}`),
+        new Paragraph({ text: "What Was Accomplished", heading: HeadingLevel.HEADING_3, spacing: { before: 400, after: 200 } }),
+        new Paragraph(completions[visit.id]?.comment || "Not marked as done yet.")
+      );
 
-      doc.setFontSize(10)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(100, 100, 100)
-      doc.text('Visit Date: ' + (visit.visit_date || '-'), 14, yPos)
-      doc.text('Type: ' + (visit.type === 'jordan_tour' ? 'Jordan Tour' : 'International Fair'), 80, yPos)
-      doc.text('School Type: ' + (visit.private_or_public || '-'), 150, yPos)
-      yPos += 6
-      doc.text('City: ' + (visit.city || '-'), 14, yPos)
-      doc.text('Country: ' + (visit.country || '-'), 80, yPos)
-      yPos += 14
-
-      // Accomplishment
-      if (completions[visit.id]) {
-        doc.setTextColor(0, 0, 0)
-        doc.setFontSize(12)
-        doc.setFont('helvetica', 'bold')
-        doc.text('What Was Accomplished', 14, yPos)
-        yPos += 8
-        doc.setFont('helvetica', 'normal')
-        doc.setFontSize(10)
-        doc.setTextColor(50, 50, 50)
-        const lines = doc.splitTextToSize(completions[visit.id].comment, 180)
-        doc.text(lines, 14, yPos)
-        yPos += lines.length * 6 + 10
-      }
-
-      // Students
-      const students = visitStudents.filter(vs => vs.visit_id === visit.id)
-      doc.setTextColor(0, 0, 0)
-      doc.setFontSize(12)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Students Collected (' + students.length + ')', 14, yPos)
-      yPos += 8
+      const students = visitStudents.filter(vs => vs.visit_id === visit.id);
+      sections.push(new Paragraph({ text: `Students Collected (${students.length})`, heading: HeadingLevel.HEADING_3, spacing: { before: 400, after: 200 } }));
 
       if (students.length > 0) {
-        autoTable(doc, {
-          startY: yPos,
-          head: [['Name', 'Email', 'Phone', 'Grade', 'Major', 'Matched']],
-          body: students.map(s => [
-            s.full_name,
-            s.email || '-',
-            s.phone || '-',
-            s.grade || '-',
-            s.major_interested || '-',
-            s.is_matched ? 'Yes' : 'No',
-          ]),
-          theme: 'striped',
-          headStyles: { fillColor: [59, 130, 246] },
-          margin: { left: 14 },
-        })
+        const studentHeaderRow = new TableRow({
+          children: ['Name', 'Email', 'Phone', 'Grade', 'Major', 'Matched'].map(
+            text => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })] })
+          ),
+        });
+
+        const studentRows = students.map(s => new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph(s.full_name)] }),
+            new TableCell({ children: [new Paragraph(s.email || '-')] }),
+            new TableCell({ children: [new Paragraph(s.phone || '-')] }),
+            new TableCell({ children: [new Paragraph(s.grade || '-')] }),
+            new TableCell({ children: [new Paragraph(s.major_interested || '-')] }),
+            new TableCell({ children: [new Paragraph(s.is_matched ? 'Yes' : 'No')] }),
+          ]
+        }));
+
+        sections.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [studentHeaderRow, ...studentRows] }));
       } else {
-        doc.setFont('helvetica', 'normal')
-        doc.setFontSize(10)
-        doc.setTextColor(150, 150, 150)
-        doc.text('No students collected during this visit', 14, yPos)
+        sections.push(new Paragraph("No students collected during this visit."));
       }
     }
 
-    const filename = isAll ? 'HTU_All_Visits_Report.pdf' : 'HTU_Visit_' + visit.school_name.replace(/\s+/g, '_') + '.pdf'
-    doc.save(filename)
-    await logActivity('Exported PDF', 'school_visit', isAll ? 'All Visits' : visit.school_name, 'PDF report generated')
+    const doc = new Document({ sections: [{ properties: {}, children: sections }] });
+    const blob = await Packer.toBlob(doc);
+    const filename = isAll ? 'HTU_All_Visits_Report.docx' : `HTU_Visit_${visit.school_name.replace(/\s+/g, '_')}.docx`;
+    saveAs(blob, filename);
+    await logActivity('Exported Word Doc', 'school_visit', isAll ? 'All Visits' : visit.school_name, 'Word document generated');
   }
  const [visitStudents, setVisitStudents] = useState([])
 
@@ -287,7 +300,11 @@ export default function SchoolVisitsPage() {
     fetchVisitStudents()
   }, [])
 
+
   const filteredVisits = filterType === 'all' ? visits : visits.filter(v => v.type === filterType)
+
+  const pendingVisits = filteredVisits.filter(v => !completions[v.id])
+  const completedVisits = filteredVisits.filter(v => completions[v.id])
 
   const s = {
     card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' },
@@ -309,11 +326,11 @@ export default function SchoolVisitsPage() {
         </div>
        <div style={{ display: 'flex', gap: '10px' }}>
           <button
-            onClick={() => generatePDF(null)}
+            onClick={() => generateWord(null)}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#f59e0b', cursor: 'pointer' }}
           >
             <FileText size={16} />
-            Export All PDF
+            Export All Word
           </button>
           <button
             onClick={() => { setShowForm(true); setEditingVisit(null); setForm(emptyForm) }}
@@ -326,8 +343,8 @@ export default function SchoolVisitsPage() {
       </div>
 
       {/* Filter */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-        {['all', 'jordan_tour', 'international_fair'].map(type => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {['all', 'School Tours', 'School visits at HTU Campus', 'School Fairs', 'Outreach fairs', 'Outreach School Tours', 'Outreach Events'].map(type => (
           <button
             key={type}
             onClick={() => setFilterType(type)}
@@ -343,90 +360,95 @@ export default function SchoolVisitsPage() {
               transition: 'all 0.15s',
             }}
           >
-            {type === 'all' ? 'All' : type === 'jordan_tour' ? 'Jordan Tours' : 'International Fairs'}
+            {type === 'all' ? 'All' : type}
           </button>
         ))}
       </div>
 
       {/* Table */}
-      <div style={s.card}>
+    {/* Pending Visits Table */}
+      <div style={{ marginBottom: '8px' }}>
+        <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#ffffff', marginBottom: '12px' }}>Upcoming / Pending Visits ({pendingVisits.length})</h2>
+      </div>
+      <div style={{ ...s.card, marginBottom: '32px' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['School Name', 'Type', 'City', 'Country', 'Public/Private', 'Visit Date', 'Accomplished', 'Actions'].map(h => (
-                <th key={h} style={s.th}>{h}</th>
-              ))}
+              {['School Name', 'Type', 'City', 'Date', 'Time', 'Status','Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
-            ) : filteredVisits.length === 0 ? (
-              <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No visits found</td></tr>
-            ) : (
-              filteredVisits.map((visit) => (
-                <tr key={visit.id} style={{ transition: 'background 0.1s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
+            {loading ? <tr><td colSpan={9} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>Loading...</td></tr> : 
+             pendingVisits.length === 0 ? <tr><td colSpan={9} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No pending visits</td></tr> : 
+             pendingVisits.map((visit) => (
+                <tr key={visit.id} style={{ transition: 'background 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                   <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{visit.school_name}</td>
-                  <td style={s.td}>
-                    <span style={{
-                      padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
-                      background: visit.type === 'jordan_tour' ? 'rgba(59,130,246,0.15)' : 'rgba(139,92,246,0.15)',
-                      color: visit.type === 'jordan_tour' ? '#60a5fa' : '#a78bfa',
-                    }}>
-                      {visit.type === 'jordan_tour' ? 'Jordan Tour' : 'International Fair'}
-                    </span>
-                  </td>
+                  <td style={s.td}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{visit.type}</span></td>
                   <td style={s.td}>{visit.city || '-'}</td>
-                  <td style={s.td}>{visit.country || '-'}</td>
-                  <td style={s.td}>{visit.private_or_public}</td>
                   <td style={s.td}>{visit.visit_date}</td>
+                  <td style={s.td}>{visit.visit_time || '-'}</td>
+                  <td style={s.td}><span style={{ color: visit.connection_status === 'New' ? '#10b981' : '#f59e0b', fontWeight: '500' }}>{visit.connection_status || 'New'}</span></td>
                   <td style={s.td}>
-                    {completions[visit.id] ? (
-                      <div>
-                        <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '600' }}>✓ Done</span>
-                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: '2px 0 0 0', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{completions[visit.id].comment}</p>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleMarkDone(visit)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                      >
-                        <CheckCircle size={13} />
-                        Mark Done
-                      </button>
-                    )}
+                    <button onClick={() => handleMarkDone(visit)} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      <CheckCircle size={13} /> Mark Done
+                    </button>
                   </td>
                   <td style={s.td}>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => handleEdit(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '4px', borderRadius: '6px', display: 'flex' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#3b82f6'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                     <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '4px', borderRadius: '6px', display: 'flex' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                      <button onClick={() => generatePDF(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '4px', borderRadius: '6px', display: 'flex' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#f59e0b'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
-                      >
-                        <FileText size={14} />
-                      </button>
+                      <button onClick={() => handleEdit(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Pencil size={14} /></button>
+                      <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Trash2 size={14} /></button>
+                      <button onClick={() => generateWord(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><FileText size={14} /></button>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
       </div>
+
+      {/* Completed Visits Table */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', cursor: 'pointer' }} onClick={() => setIsCompletedCollapsed(!isCompletedCollapsed)}>
+        <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#10b981' }}>Completed Visits ({completedVisits.length})</h2>
+        <button style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)' }}>
+          {isCompletedCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+        </button>
+      </div>
+      
+      {!isCompletedCollapsed && (
+        <div style={{ ...s.card, opacity: 0.8 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['School Name', 'Type', 'Date', 'Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {completedVisits.length === 0 ? <tr><td colSpan={5} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No completed visits yet</td></tr> : 
+               completedVisits.map((visit) => (
+                  <tr key={visit.id} style={{ background: 'rgba(16,185,129,0.02)' }}>
+                    <td style={{ ...s.td, color: '#ffffff', fontWeight: '500', textDecoration: 'line-through', opacity: 0.7 }}>{visit.school_name}</td>
+                    <td style={s.td}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{visit.type}</span></td>
+                    <td style={s.td}>{visit.visit_date}</td>
+                    <td style={s.td}>
+                      <div>
+                        <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '600' }}>✓ Done</span>
+                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: '2px 0 0 0', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{completions[visit.id].comment}</p>
+                      </div>
+                    </td>
+                    <td style={s.td}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => handleUndoComplete(visit.id)} title="Undo Completion" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b' }}><RotateCcw size={14} /></button>
+                        <button onClick={() => handleEdit(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Pencil size={14} /></button>
+                        <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Trash2 size={14} /></button>
+                        <button onClick={() => generateWord(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><FileText size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {showForm && (
@@ -441,6 +463,7 @@ export default function SchoolVisitsPage() {
                 { label: 'City', key: 'city', type: 'text', placeholder: 'e.g. Amman' },
                 { label: 'Country', key: 'country', type: 'text', placeholder: 'e.g. Jordan' },
                 { label: 'Visit Date *', key: 'visit_date', type: 'date', placeholder: '' },
+                { label: 'Visit Time', key: 'visit_time', type: 'time', placeholder: '' },
               ].map(field => (
                 <div key={field.key}>
                   <label style={s.label}>{field.label}</label>
@@ -450,17 +473,22 @@ export default function SchoolVisitsPage() {
               <div>
                 <label style={s.label}>Type *</label>
                 <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={s.input}>
-                  <option value="jordan_tour">Jordan Tour</option>
-                  <option value="international_fair">International Fair</option>
+                  <option value="School Tours">School Tours</option>
+                  <option value="School visits at HTU Campus">School visits at HTU Campus</option>
+                  <option value="School Fairs">School Fairs</option>
+                  <option value="Outreach fairs">Outreach fairs</option>
+                  <option value="Outreach School Tours">Outreach School Tours</option>
+                  <option value="Outreach Events">Outreach Events</option>
                 </select>
               </div>
               <div>
-                <label style={s.label}>Public or Private *</label>
-                <select value={form.private_or_public} onChange={(e) => setForm({ ...form, private_or_public: e.target.value })} style={s.input}>
-                  <option value="private">Private</option>
-                  <option value="public">Public</option>
+                <label style={s.label}>Status (New/Repeated) *</label>
+                <select value={form.connection_status} onChange={(e) => setForm({ ...form, connection_status: e.target.value })} style={s.input}>
+                  <option value="New">New</option>
+                  <option value="Repeated">Repeated</option>
                 </select>
               </div>
+              
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
               <button onClick={handleSubmit} style={{ flex: 1, background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>

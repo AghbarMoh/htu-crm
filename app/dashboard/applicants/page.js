@@ -159,10 +159,19 @@ export default function ApplicantsPage() {
     const { data: currentApplicants } = await supabase.from('applicants').select('id, full_name, phone, email')
     if (!visitStudents || !currentApplicants) return
     for (const vs of visitStudents) {
-      const match = currentApplicants.find(a =>
-        a.full_name?.toLowerCase() === vs.full_name?.toLowerCase() &&
-        (a.phone === vs.phone || a.email === vs.email)
-      )
+      const match = currentApplicants.find(a => {
+        // 1. Clean names: lowercase and remove all spaces
+        const cleanAppName = a.full_name?.toLowerCase().replace(/\s+/g, '');
+        const cleanVisitName = vs.full_name?.toLowerCase().replace(/\s+/g, '');
+        
+        // 2. Check each condition individually
+        const isNameMatch = cleanAppName && cleanVisitName && cleanAppName === cleanVisitName;
+        const isEmailMatch = a.email && vs.email && a.email.toLowerCase() === vs.email.toLowerCase();
+        const isPhoneMatch = a.phone && vs.phone && a.phone === vs.phone;
+
+        // 3. Return true if ANY condition matches (OR logic)
+        return isNameMatch || isEmailMatch || isPhoneMatch;
+      })
       if (match) {
         await supabase.from('matches').upsert({ visit_student_id: vs.id, applicant_name: match.full_name, applicant_email: match.email, applicant_phone: match.phone }, { onConflict: 'visit_student_id' })
         await supabase.from('visit_students').update({ is_matched: true, matched_applicant_id: match.id }).eq('id', vs.id)
@@ -172,10 +181,19 @@ export default function ApplicantsPage() {
     const { data: savedMatches } = await supabase.from('matches').select('*')
     if (savedMatches) {
       for (const m of savedMatches) {
-        const applicant = currentApplicants.find(a =>
-          a.full_name?.toLowerCase() === m.applicant_name?.toLowerCase() &&
-          (a.phone === m.applicant_phone || a.email === m.applicant_email)
-        )
+       const applicant = currentApplicants.find(a => {
+            // 1. Clean names: lowercase and remove all spaces
+            const cleanAppName = a.full_name?.toLowerCase().replace(/\s+/g, '');
+            const cleanMatchName = m.applicant_name?.toLowerCase().replace(/\s+/g, '');
+            
+            // 2. Check each condition individually
+            const isNameMatch = cleanAppName && cleanMatchName && cleanAppName === cleanMatchName;
+            const isEmailMatch = a.email && m.applicant_email && a.email.toLowerCase() === m.applicant_email.toLowerCase();
+            const isPhoneMatch = a.phone && m.applicant_phone && a.phone === m.applicant_phone;
+
+            // 3. Return true if ANY condition matches (OR logic)
+            return isNameMatch || isEmailMatch || isPhoneMatch;
+          })
         if (applicant) await supabase.from('applicants').update({ is_matched: true, matched_visit_student_id: m.visit_student_id }).eq('id', applicant.id)
       }
     }
