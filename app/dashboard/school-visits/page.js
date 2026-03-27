@@ -81,7 +81,6 @@ export default function SchoolVisitsPage() {
     }
 
     // --- Trigger Background Schedule API ---
-    // --- Trigger Background Schedule API ---
     try {
       const res = await fetch('/api/schedule-reminder', {
         method: 'POST',
@@ -102,13 +101,6 @@ export default function SchoolVisitsPage() {
       if (scheduleData.error) {
         alert("BACKGROUND API ERROR: " + scheduleData.error);
       }
-      
-      if (scheduleData.messageId) {
-        await supabase.from('school_visits').update({ qstash_message_id: scheduleData.messageId }).eq('id', savedVisit.id);
-      }
-    } catch (err) {
-      alert("FETCH ERROR: " + err.message);
-    }
       
       // Save the new Upstash Message ID to Supabase so we can delete it later if needed
       if (scheduleData.messageId) {
