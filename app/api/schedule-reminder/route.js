@@ -14,7 +14,7 @@ export async function POST(request) {
     }
 
     // 2. THE FIX: The exact regional URL for Ireland (where your account is)
-    const QSTASH_URL = "https://qstash-eu-west-1.upstash.io";
+    const QSTASH_URL = "https://qstash-eu-central-1.upstash.io";
 
     if (!QSTASH_TOKEN || !APP_URL) {
       return NextResponse.json({ error: "Missing QSTASH_TOKEN or NEXT_PUBLIC_APP_URL in Vercel." }, { status: 500 });
