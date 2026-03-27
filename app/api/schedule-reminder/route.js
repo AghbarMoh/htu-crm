@@ -29,7 +29,18 @@ export async function POST(request) {
 
     // 2. Calculate the "Not Before" time (Jordan UTC+3)
     const eventDate = new Date(`${visit_date}T${visit_time}+03:00`);
-    const triggerDate = new Date(eventDate.getTime() - (parseInt(reminder) * 60000));
+
+    if (reminder === undefined || reminder === null || reminder === "") {
+  throw new Error("Reminder is required");
+}
+
+const reminderMinutes = Number(reminder);
+
+if (isNaN(reminderMinutes)) {
+  throw new Error("Reminder must be a valid number");
+}
+
+const triggerDate = new Date(eventDate.getTime() - (reminderMinutes * 60000));
     const notBeforeTimestamp = Math.floor(triggerDate.getTime() / 1000);
 
     // 3. Publish using the SDK
