@@ -1,69 +1,53 @@
 import { NextResponse } from 'next/server';
+import { Client } from "@upstash/qstash";
 
 export async function POST(request) {
   try {
     const body = await request.json();
     const { school_name, visit_date, visit_time, reminder, old_message_id } = body;
 
-    // 1. Clean the Vercel Environment Variables
-    const QSTASH_TOKEN = (process.env.QSTASH_TOKEN || "").trim();
-    let APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
-    
-    if (APP_URL.endsWith('/')) {
-        APP_URL = APP_URL.slice(0, -1);
-    }
+    const token = (process.env.QSTASH_TOKEN || "").trim();
+    let appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
+    if (appUrl.endsWith('/')) appUrl = appUrl.slice(0, -1);
 
-    // 2. THE FIX: The exact regional URL for Ireland (where your account is)
-    const QSTASH_URL = "https://qstash-eu-central-1.upstash.io";
+    // Initialize the official Upstash Client
+    const client = new Client({
+      token: token,
+      // IMPORTANT: If you still get the "region" error, 
+      // check your Upstash dashboard and change this to match your region.
+      baseUrl: "https://qstash.upstash.io" 
+    });
 
-    if (!QSTASH_TOKEN || !APP_URL) {
-      return NextResponse.json({ error: "Missing QSTASH_TOKEN or NEXT_PUBLIC_APP_URL in Vercel." }, { status: 500 });
-    }
-
-    // 3. Delete old reminder if it exists
+    // 1. Delete old reminder if it exists
     if (old_message_id) {
       try {
-        await fetch(`${QSTASH_URL}/v2/messages/${old_message_id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${QSTASH_TOKEN}` }
-        });
+        await client.messages.delete(old_message_id);
       } catch (e) {
-        console.error("Old message delete failed, continuing...");
+        console.log("No old message to delete or already gone.");
       }
     }
 
-    // 4. Timing logic (Jordan is UTC+3)
+    // 2. Calculate the "Not Before" time (Jordan UTC+3)
     const eventDate = new Date(`${visit_date}T${visit_time}+03:00`);
     const triggerDate = new Date(eventDate.getTime() - (parseInt(reminder) * 60000));
     const notBeforeTimestamp = Math.floor(triggerDate.getTime() / 1000);
 
-    const targetUrl = `${APP_URL}/api/send-reminder?secret=HTU_SECURE_123`;
-
-    // 5. Schedule the new reminder
-    const upstashRes = await fetch(`${QSTASH_URL}/v2/publish/${targetUrl}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${QSTASH_TOKEN}`,
-        'Content-Type': 'application/json',
-        'Upstash-Not-Before': notBeforeTimestamp.toString(), 
-      },
-      body: JSON.stringify({
+    // 3. Publish using the SDK
+    const result = await client.publishJSON({
+      url: `${appUrl}/api/send-reminder?secret=HTU_SECURE_123`,
+      body: {
         school_name,
         visit_date,
         visit_time,
         reminder
-      })
+      },
+      notBefore: notBeforeTimestamp, // This is the scheduler part!
     });
 
-    if (!upstashRes.ok) {
-       const errText = await upstashRes.text();
-       return NextResponse.json({ error: `Upstash rejected the request: ${errText}` });
-    }
-
-    const data = await upstashRes.json();
-    return NextResponse.json({ messageId: data.messageId });
+    return NextResponse.json({ messageId: result.messageId });
     
   } catch (err) {
-    return NextResponse.json({ error: `Server Crash: ${err.message}` });
+    console.error("Scheduling Error:", err);
+    return NextResponse.json({ error: `SDK Error: ${err.message}` });
   }
 }
