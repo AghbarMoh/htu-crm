@@ -7,15 +7,15 @@ export async function POST(request) {
 
     const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
-    // NEW: Get the exact region URL we just added!
-    const QSTASH_URL = process.env.QSTASH_URL || "https://qstash.upstash.io";
+    
+    // HARDCODED EU REGION: This forces it to bypass Vercel's cache and hit the exact right server!
+    const QSTASH_URL = "https://eu-west-1.qstash.upstash.io";
 
     if (!QSTASH_TOKEN || !APP_URL) {
       return NextResponse.json({ error: "Missing QSTASH_TOKEN or NEXT_PUBLIC_APP_URL in Vercel Environment Variables." }, { status: 500 });
     }
 
     if (old_message_id) {
-      // NEW: Using the QSTASH_URL variable
       await fetch(`${QSTASH_URL}/v2/messages/${old_message_id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${QSTASH_TOKEN}` }
@@ -28,7 +28,6 @@ export async function POST(request) {
 
     const targetUrl = `${APP_URL}/api/send-reminder?secret=HTU_SECURE_123`;
 
-    // NEW: Using the QSTASH_URL variable
     const upstashRes = await fetch(`${QSTASH_URL}/v2/publish/${targetUrl}`, {
       method: 'POST',
       headers: {
