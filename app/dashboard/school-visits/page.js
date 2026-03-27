@@ -29,7 +29,7 @@ export default function SchoolVisitsPage() {
     visit_date: '',
     visit_time: '',
     connection_status: 'New',
-    reminder: '60', // Default is 1 hour
+    reminder_time: '60', // Default is 1 hour
     qstash_message_id: null,
   }
 
