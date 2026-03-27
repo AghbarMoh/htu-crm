@@ -14,8 +14,8 @@ export async function POST(request) {
         APP_URL = APP_URL.slice(0, -1);
     }
 
-    // This is the hardcoded EU region. 
-    const QSTASH_URL = "https://qstash-eu-central-1.upstash.io";
+    // CHANGED: Back to the Global Upstash Server
+    const QSTASH_URL = "https://qstash.upstash.io";
 
     if (!QSTASH_TOKEN || !APP_URL) {
       return NextResponse.json({ error: "Missing QSTASH_TOKEN or NEXT_PUBLIC_APP_URL in Vercel Environment Variables." }, { status: 500 });
