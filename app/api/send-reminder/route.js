@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Remove the 'const resend...' line from up here!
 
 export async function POST(request) {
+  // Move it inside the function here:
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
   // Simple security check so random people can't trigger your emails
   const url = new URL(request.url);
   if (url.searchParams.get('secret') !== 'HTU_SECURE_123') {
@@ -13,7 +16,7 @@ export async function POST(request) {
   const body = await request.json();
   const { school_name, visit_date, visit_time, reminder_time } = body;
 
-  // Format the reminder text for the email body
+  // Format the reminder text
   let notice = "";
   if (reminder_time == "30") notice = "in 30 Minutes";
   else if (reminder_time == "60") notice = "in 1 Hour";
@@ -24,8 +27,8 @@ export async function POST(request) {
 
   try {
     await resend.emails.send({
-      from: 'HTU CRM <onboarding@resend.dev>', // Keep this exactly as is while on Resend's free tier
-      to: '23110015@htu.edu.jo', // Your email!
+      from: 'HTU CRM <onboarding@resend.dev>', 
+      to: '23110015@htu.edu.jo',
       subject: `🚨 Reminder: Visit at ${school_name} ${notice}!`,
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333;">
