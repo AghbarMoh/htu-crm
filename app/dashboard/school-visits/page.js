@@ -90,7 +90,7 @@ export default function SchoolVisitsPage() {
           school_name: savedVisit.school_name,
           visit_date: savedVisit.visit_date,
           visit_time: savedVisit.visit_time,
-          reminder: savedVisit.reminder,
+          reminder: savedVisit.reminder_time,
           old_message_id: savedVisit.qstash_message_id
         })
       });
