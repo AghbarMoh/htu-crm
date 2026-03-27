@@ -5,11 +5,17 @@ export async function POST(request) {
     const body = await request.json();
     const { visit_id, school_name, visit_date, visit_time, reminder, old_message_id } = body;
 
-    const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+    // .trim() removes invisible spaces that cause "fetch failed" crashes!
+    const QSTASH_TOKEN = (process.env.QSTASH_TOKEN || "").trim();
+    let APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
     
-    // HARDCODED EU REGION: This forces it to bypass Vercel's cache and hit the exact right server!
-    const QSTASH_URL = "https://eu-west-1.qstash.upstash.io";
+    // Automatically remove trailing slash if you accidentally added one in Vercel
+    if (APP_URL.endsWith('/')) {
+        APP_URL = APP_URL.slice(0, -1);
+    }
+
+    // This is the hardcoded EU region. 
+    const QSTASH_URL = "https://qstash-eu-central-1.upstash.io";
 
     if (!QSTASH_TOKEN || !APP_URL) {
       return NextResponse.json({ error: "Missing QSTASH_TOKEN or NEXT_PUBLIC_APP_URL in Vercel Environment Variables." }, { status: 500 });
@@ -52,6 +58,7 @@ export async function POST(request) {
     return NextResponse.json({ messageId: data.messageId });
     
   } catch (err) {
-    return NextResponse.json({ error: `Server Crash: ${err.message}` });
+    // This will tell us the EXACT network error if it fails again!
+    return NextResponse.json({ error: `Server Crash: ${err.message}. Details: ${err.cause?.message || 'No extra details'}` });
   }
 }
