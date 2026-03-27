@@ -29,7 +29,7 @@ export default function SchoolVisitsPage() {
     visit_date: '',
     visit_time: '',
     connection_status: 'New',
-    reminder_time: '60', // Default is 1 hour
+    reminder: '60', // Default is 1 hour
     qstash_message_id: null,
   }
 
@@ -90,7 +90,7 @@ export default function SchoolVisitsPage() {
           school_name: savedVisit.school_name,
           visit_date: savedVisit.visit_date,
           visit_time: savedVisit.visit_time,
-          reminder_time: savedVisit.reminder_time,
+          reminder: savedVisit.reminder_time,
           old_message_id: savedVisit.qstash_message_id
         })
       });
@@ -117,7 +117,7 @@ export default function SchoolVisitsPage() {
       visit_date: visit.visit_date,
       visit_time: visit.visit_time || '',
       connection_status: visit.connection_status || 'New',
-      reminder_time: visit.reminder_time || '60',
+      reminder: visit.reminder_time || '60',
       qstash_message_id: visit.qstash_message_id || null,
     })
     setShowForm(true)
@@ -509,7 +509,7 @@ const handleUndoComplete = async (visitId) => {
 
               <div>
                 <label style={s.label}>Reminder Notice *</label>
-                <select value={form.reminder_time} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })} style={s.input}>
+                <select value={form.reminder} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })} style={s.input}>
                   <option value="30">30 Minutes Before</option>
                   <option value="60">1 Hour Before</option>
                   <option value="120">2 Hours Before</option>
