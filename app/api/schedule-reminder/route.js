@@ -7,14 +7,16 @@ export async function POST(request) {
 
     const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+    // NEW: Get the exact region URL we just added!
+    const QSTASH_URL = process.env.QSTASH_URL || "https://qstash.upstash.io";
 
-    // Check 1: Did Vercel load the variables?
     if (!QSTASH_TOKEN || !APP_URL) {
       return NextResponse.json({ error: "Missing QSTASH_TOKEN or NEXT_PUBLIC_APP_URL in Vercel Environment Variables." }, { status: 500 });
     }
 
     if (old_message_id) {
-      await fetch(`https://qstash.upstash.io/v2/messages/${old_message_id}`, {
+      // NEW: Using the QSTASH_URL variable
+      await fetch(`${QSTASH_URL}/v2/messages/${old_message_id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${QSTASH_TOKEN}` }
       });
@@ -26,7 +28,8 @@ export async function POST(request) {
 
     const targetUrl = `${APP_URL}/api/send-reminder?secret=HTU_SECURE_123`;
 
-    const upstashRes = await fetch(`https://qstash.upstash.io/v2/publish/${targetUrl}`, {
+    // NEW: Using the QSTASH_URL variable
+    const upstashRes = await fetch(`${QSTASH_URL}/v2/publish/${targetUrl}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${QSTASH_TOKEN}`,
@@ -41,7 +44,6 @@ export async function POST(request) {
       })
     });
 
-    // Check 2: Did Upstash reject it?
     if (!upstashRes.ok) {
        const errText = await upstashRes.text();
        return NextResponse.json({ error: `Upstash rejected the request: ${errText}` });
@@ -51,7 +53,6 @@ export async function POST(request) {
     return NextResponse.json({ messageId: data.messageId });
     
   } catch (err) {
-    // Check 3: Did the code crash entirely?
     return NextResponse.json({ error: `Server Crash: ${err.message}` });
   }
 }
