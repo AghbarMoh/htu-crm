@@ -29,6 +29,8 @@ export default function SchoolVisitsPage() {
     visit_date: '',
     visit_time: '',
     connection_status: 'New',
+    reminder_time: '60', // Default is 1 hour
+    qstash_message_id: null,
   }
 
   const [form, setForm] = useState(emptyForm)
@@ -54,41 +56,55 @@ export default function SchoolVisitsPage() {
   }
 
   const handleSubmit = async () => {
-    if (!form.school_name || !form.visit_date) {
-      alert('Please fill in school name and visit date')
+    if (!form.school_name || !form.visit_date || !form.visit_time) {
+      alert('Please fill in school name, visit date, and visit time to set a reminder.')
       return
     }
 
-    // Sanitize the payload: Convert empty strings to null for database constraints
     const payload = {
       ...form,
       visit_time: form.visit_time === '' ? null : form.visit_time,
     }
 
+    let savedVisit;
+
     if (editingVisit) {
-      // We added .select() at the end to force Supabase to return the changed row
-      const { data, error } = await supabase.from('school_visits').update(payload).eq('id', editingVisit.id).select()
-      
-      if (error) {
-        alert('Supabase Update Error: ' + error.message)
-      } else if (!data || data.length === 0) {
-        alert('Silent Failure: Supabase did not update any rows. Check RLS policies!')
-      } else {
-        await logActivity('Edited school visit', 'school_visit', payload.school_name, 'Updated visit details')
-        fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm)
-      }
+      const { data, error } = await supabase.from('school_visits').update(payload).eq('id', editingVisit.id).select().single()
+      if (error) { alert('Update Error: ' + error.message); return }
+      savedVisit = data;
+      await logActivity('Edited school visit', 'school_visit', payload.school_name, 'Updated visit details')
     } else {
-      const { data, error } = await supabase.from('school_visits').insert([payload]).select()
-      
-      if (error) {
-        alert('Supabase Insert Error: ' + error.message)
-      } else if (!data || data.length === 0) {
-        alert('Silent Failure: Supabase did not insert any rows. Check RLS policies!')
-      } else {
-        await logActivity('Created school visit', 'school_visit', payload.school_name, 'New visit added')
-        fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm)
-      }
+      const { data, error } = await supabase.from('school_visits').insert([payload]).select().single()
+      if (error) { alert('Insert Error: ' + error.message); return }
+      savedVisit = data;
+      await logActivity('Created school visit', 'school_visit', payload.school_name, 'New visit added')
     }
+
+    // --- Trigger Background Schedule API ---
+    try {
+      const res = await fetch('/api/schedule-reminder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visit_id: savedVisit.id,
+          school_name: savedVisit.school_name,
+          visit_date: savedVisit.visit_date,
+          visit_time: savedVisit.visit_time,
+          reminder_time: savedVisit.reminder_time,
+          old_message_id: savedVisit.qstash_message_id
+        })
+      });
+      const scheduleData = await res.json();
+      
+      // Save the new Upstash Message ID to Supabase so we can delete it later if needed
+      if (scheduleData.messageId) {
+        await supabase.from('school_visits').update({ qstash_message_id: scheduleData.messageId }).eq('id', savedVisit.id);
+      }
+    } catch (err) {
+      console.error("Failed to schedule reminder:", err);
+    }
+
+    fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm)
   }
  const handleEdit = (visit) => {
     setEditingVisit(visit)
@@ -101,6 +117,8 @@ export default function SchoolVisitsPage() {
       visit_date: visit.visit_date,
       visit_time: visit.visit_time || '',
       connection_status: visit.connection_status || 'New',
+      reminder_time: visit.reminder_time || '60',
+      qstash_message_id: visit.qstash_message_id || null,
     })
     setShowForm(true)
   }
@@ -486,6 +504,18 @@ const handleUndoComplete = async (visitId) => {
                 <select value={form.connection_status} onChange={(e) => setForm({ ...form, connection_status: e.target.value })} style={s.input}>
                   <option value="New">New</option>
                   <option value="Repeated">Repeated</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={s.label}>Reminder Notice *</label>
+                <select value={form.reminder_time} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })} style={s.input}>
+                  <option value="30">30 Minutes Before</option>
+                  <option value="60">1 Hour Before</option>
+                  <option value="120">2 Hours Before</option>
+                  <option value="1440">1 Day Before</option>
+                  <option value="2880">2 Days Before</option>
+                  <option value="10080">1 Week Before</option>
                 </select>
               </div>
               
