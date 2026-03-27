@@ -15,7 +15,7 @@ export async function POST(request) {
       token: token,
       // IMPORTANT: If you still get the "region" error, 
       // check your Upstash dashboard and change this to match your region.
-      baseUrl: "https://qstash-eu-central-1.upstash.io" 
+      
     });
 
     // 1. Delete old reminder if it exists
