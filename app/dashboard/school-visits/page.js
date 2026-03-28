@@ -29,7 +29,7 @@ export default function SchoolVisitsPage() {
     visit_date: '',
     visit_time: '',
     connection_status: 'New',
-    reminder_time: '60', // Default is 1 hour
+    reminder_time: 'none', 
     qstash_message_id: null,
   }
 
@@ -79,7 +79,38 @@ export default function SchoolVisitsPage() {
       savedVisit = data;
       await logActivity('Created school visit', 'school_visit', payload.school_name, 'New visit added')
     }
-
+// --- Trigger Background Schedule API ---
+    try {
+      // ONLY call the API if a reminder is selected
+      if (form.reminder_time === 'none') {
+          console.log("No reminder requested, skipping API.");
+      } else {
+          const res = await fetch('/api/schedule-reminder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              visit_id: savedVisit.id,
+              school_name: savedVisit.school_name,
+              visit_date: savedVisit.visit_date,
+              visit_time: savedVisit.visit_time,
+              reminder: savedVisit.reminder_time,
+              old_message_id: savedVisit.qstash_message_id
+            })
+          });
+          
+          const scheduleData = await res.json();
+          
+          if (scheduleData.error) {
+            alert(scheduleData.error); // Show your custom error message
+          }
+          
+          if (scheduleData.messageId) {
+            await supabase.from('school_visits').update({ qstash_message_id: scheduleData.messageId }).eq('id', savedVisit.id);
+          }
+      }
+    } catch (err) {
+      console.error("Failed to schedule reminder:", err);
+    }
     // --- Trigger Background Schedule API ---
     try {
       const res = await fetch('/api/schedule-reminder', {
@@ -516,6 +547,7 @@ const handleUndoComplete = async (visitId) => {
               <div>
                 <label style={s.label}>Reminder Notice *</label>
                 <select value={form.reminder_time} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })} style={s.input}>
+                  <option value="none">No Reminder</option>
                   <option value="30">30 Minutes Before</option>
                   <option value="60">1 Hour Before</option>
                   <option value="120">2 Hours Before</option>

@@ -57,8 +57,16 @@ const triggerDate = new Date(eventDate.getTime() - (reminderMinutes * 60000));
 
     return NextResponse.json({ messageId: result.messageId });
     
-  } catch (err) {
-    console.error("Scheduling Error:", err);
-    return NextResponse.json({ error: `SDK Error: ${err.message}` });
+  } catch (error) {
+    console.error("Scheduling Error:", error);
+
+    // Write the error message yourself for the 7-day limit
+    if (error.message.includes("maxDelay exceeded") || error.message.includes("604800")) {
+      return NextResponse.json({ 
+        error: "ممنوووووووووووووووووووووووووووووووووووع" 
+      }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: "Reminder API Error: " + error.message }, { status: 500 });
   }
 }
