@@ -63,7 +63,7 @@ const triggerDate = new Date(eventDate.getTime() - (reminderMinutes * 60000));
     // If the 7-day limit (604800 seconds) is exceeded, show your Arabic message
     if (error.message.includes("maxDelay exceeded") || error.message.includes("604800")) {
       return NextResponse.json({ 
-        error: "ممنوع تعملي تذكير لشغلة ضايلها لسا 7 ايام" 
+        error: "ممنوع تعملي تذكير لشغلة ضايلها لسا اكتر من اسبوع" 
       }, { status: 400 });
     }
 

@@ -82,39 +82,6 @@ export default function SchoolVisitsPage() {
 // --- Trigger Background Schedule API ---
     try {
       // ONLY call the API if a reminder is selected
-      if (form.reminder_time === 'none') {
-          console.log("No reminder requested, skipping API.");
-      } else {
-          const res = await fetch('/api/schedule-reminder', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              visit_id: savedVisit.id,
-              school_name: savedVisit.school_name,
-              visit_date: savedVisit.visit_date,
-              visit_time: savedVisit.visit_time,
-              reminder: savedVisit.reminder_time,
-              old_message_id: savedVisit.qstash_message_id
-            })
-          });
-          
-          const scheduleData = await res.json();
-          
-          if (scheduleData.error) {
-            alert(scheduleData.error); // Show your custom error message
-          }
-          
-          if (scheduleData.messageId) {
-            await supabase.from('school_visits').update({ qstash_message_id: scheduleData.messageId }).eq('id', savedVisit.id);
-          }
-      }
-    } catch (err) {
-      console.error("Failed to schedule reminder:", err);
-    }
-    // --- Trigger Background Schedule API ---
-    // --- Trigger Background Schedule API ---
-    try {
-      // ONLY call the API if a reminder is selected
       if (form.reminder_time !== 'none') {
         const res = await fetch('/api/schedule-reminder', {
           method: 'POST',
@@ -138,12 +105,10 @@ export default function SchoolVisitsPage() {
         if (scheduleData.messageId) {
           await supabase.from('school_visits').update({ qstash_message_id: scheduleData.messageId }).eq('id', savedVisit.id);
         }
-      }} catch (err) {
+      }
+    } catch (err) {
       console.error("Failed to schedule reminder:", err);
     }
-
-    fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm)
-  }
  const handleEdit = (visit) => {
     setEditingVisit(visit)
     setForm({
