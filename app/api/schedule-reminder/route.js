@@ -4,7 +4,7 @@ import { Client } from "@upstash/qstash";
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { school_name, visit_date, visit_time, reminder, old_message_id } = body;
+    const { school_name, visit_date, visit_time, reminder_time, old_message_id } = body;
 
     const token = (process.env.QSTASH_TOKEN || "").trim();
     let appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
@@ -30,7 +30,7 @@ export async function POST(request) {
     // 2. Calculate the "Not Before" time (Jordan UTC+3)
     const eventDate = new Date(`${visit_date}T${visit_time}+03:00`);
 
-    if (reminder === undefined || reminder === null || reminder === "") {
+    if (reminder_time === undefined || reminder === null || reminder === "") {
   throw new Error("Reminder is required");
 }
 
@@ -50,7 +50,7 @@ const triggerDate = new Date(eventDate.getTime() - (reminderMinutes * 60000));
         school_name,
         visit_date,
         visit_time,
-        reminder
+        reminder_time
       },
       notBefore: notBeforeTimestamp, // This is the scheduler part!
     });
