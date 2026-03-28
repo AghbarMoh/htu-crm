@@ -68,16 +68,28 @@ export default function SchoolVisitsPage() {
 
     let savedVisit;
 
-    if (editingVisit) {
-      const { data, error } = await supabase.from('school_visits').update(payload).eq('id', editingVisit.id).select().single()
-      if (error) { alert('Update Error: ' + error.message); return }
-      savedVisit = data;
+   if (editingVisit) {
+      console.log("Updating visit with ID:", editingVisit.id); // Check your console!
+      
+      const { data, error } = await supabase
+        .from('school_visits')
+        .update(payload)
+        .eq('id', editingVisit.id)
+        .select(); // REMOVED .single() here
+
+      if (error) { 
+        alert('Update Error: ' + error.message); 
+        return; 
+      }
+
+      // If data is an empty array, the ID was wrong or missing
+      if (!data || data.length === 0) {
+        alert('Error: Record not found. The ID being sent is: ' + editingVisit.id);
+        return;
+      }
+
+      savedVisit = data[0]; // Take the first row from the array
       await logActivity('Edited school visit', 'school_visit', payload.school_name, 'Updated visit details')
-    } else {
-      const { data, error } = await supabase.from('school_visits').insert([payload]).select().single()
-      if (error) { alert('Insert Error: ' + error.message); return }
-      savedVisit = data;
-      await logActivity('Created school visit', 'school_visit', payload.school_name, 'New visit added')
     }
 
     // --- Trigger Background Schedule API ---
