@@ -27,7 +27,8 @@ export async function POST(request) {
 
   try {
     console.log("SENDING FROM:", 'HTU CRM <reminder@htucrm.com>');
-const result = await resend.emails.send({      from: 'HTU CRM <reminder@htucrm.com>', 
+const result = await resend.emails.send({      
+  from: 'HTU CRM <reminder@htucrm.com>', 
       to: '23110015@htu.edu.jo',
       subject: `🚨 Reminder: Visit at ${school_name} ${notice}!`,
       html: `

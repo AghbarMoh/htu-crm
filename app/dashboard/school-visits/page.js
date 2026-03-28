@@ -55,57 +55,62 @@ export default function SchoolVisitsPage() {
     }
   }
 
-  const handleSubmit = async () => {
+ const handleSubmit = async () => {
     if (!form.school_name || !form.visit_date || !form.visit_time) {
-      alert('Please fill in school name, visit date, and visit time to set a reminder.')
-      return
+      alert('Please fill in school name, visit date, and visit time.');
+      return;
     }
+
+    // Get the current user to fill the 'created_by' column
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = {
       ...form,
+      created_by: user?.id, // Added this to prevent database errors
       visit_time: form.visit_time === '' ? null : form.visit_time,
-    }
+    };
 
     let savedVisit;
 
-   if (editingVisit) {
-      console.log("Updating visit with ID:", editingVisit.id); // Check your console!
-      
-      const { data, error } = await supabase
-        .from('school_visits')
-        .update(payload)
-        .eq('id', editingVisit.id)
-        .select(); // REMOVED .single() here
-
-      if (error) { 
-        alert('Update Error: ' + error.message); 
-        return; 
-      }
-
-      // If data is an empty array, the ID was wrong or missing
-      if (!data || data.length === 0) {
-        alert('Error: Record not found. The ID being sent is: ' + editingVisit.id);
-        return;
-      }
-
-      savedVisit = data[0]; // Take the first row from the array
-      await logActivity('Edited school visit', 'school_visit', payload.school_name, 'Updated visit details')
+    if (editingVisit) {
+      const { data, error } = await supabase.from('school_visits').update(payload).eq('id', editingVisit.id).select().maybeSingle();
+      if (error) { console.error('Update Error:', error); alert(error.message); return; }
+      savedVisit = data;
+    } else {
+      const { data, error } = await supabase.from('school_visits').insert([payload]).select().maybeSingle();
+      if (error) { console.error('Insert Error:', error); alert(error.message); return; }
+      savedVisit = data;
     }
 
-    // --- Trigger Background Schedule API ---
-    try {
-      const res = await fetch('/api/schedule-reminder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          visit_id: savedVisit.id,
-          school_name: savedVisit.school_name,
-          visit_date: savedVisit.visit_date,
-          visit_time: savedVisit.visit_time,
-          reminder: savedVisit.reminder_time,
-          old_message_id: savedVisit.qstash_message_id
-        })
-      });
+    // ONLY call the API if the database save actually worked
+    if (savedVisit) {
+      try {
+        const res = await fetch('/api/schedule-reminder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            visit_id: savedVisit.id,
+            school_name: savedVisit.school_name,
+            visit_date: savedVisit.visit_date,
+            visit_time: savedVisit.visit_time,
+            reminder_time: savedVisit.reminder_time, // Standardized to reminder_time
+            old_message_id: savedVisit.qstash_message_id
+          })
+        });
+        const scheduleData = await res.json();
+        if (scheduleData.messageId) {
+          await supabase.from('school_visits').update({ qstash_message_id: scheduleData.messageId }).eq('id', savedVisit.id);
+        }
+      } catch (err) {
+        console.error("Reminder API Error:", err);
+      }
+    }
+
+    fetchVisits(); 
+    setShowForm(false); 
+    setEditingVisit(null); 
+    setForm(emptyForm);
+  };
       
       const scheduleData = await res.json();
       
