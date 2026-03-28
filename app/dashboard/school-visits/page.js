@@ -99,7 +99,7 @@ export default function SchoolVisitsPage() {
       
       // NEW: Tell us exactly what went wrong on the screen!
       if (scheduleData.error) {
-        alert("BACKGROUND API ERROR: " + scheduleData.error);
+        alert("ممنوع تعملي تذكير لشغلة ضايلها لسا 7 ايام" + scheduleData.error);
       }
       
       // Save the new Upstash Message ID to Supabase so we can delete it later if needed
