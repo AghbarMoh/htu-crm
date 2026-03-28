@@ -60,10 +60,10 @@ const triggerDate = new Date(eventDate.getTime() - (reminderMinutes * 60000));
   } catch (error) {
     console.error("Scheduling Error:", error);
 
-    // Write the error message yourself for the 7-day limit
+    // If the 7-day limit (604800 seconds) is exceeded, show your Arabic message
     if (error.message.includes("maxDelay exceeded") || error.message.includes("604800")) {
       return NextResponse.json({ 
-        error: "ممنوووووووووووووووووووووووووووووووووووع" 
+        error: "ممنوع تعملي تذكير لشغلة ضايلها لسا 7 ايام" 
       }, { status: 400 });
     }
 
