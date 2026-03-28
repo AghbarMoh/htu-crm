@@ -61,55 +61,62 @@ export default function SchoolVisitsPage() {
       return;
     }
 
-    // Get the current user to fill the 'created_by' column
-    const { data: { user } } = await supabase.auth.getUser();
+    // Get the current user session
+    const { data: { session } } = await supabase.auth.getSession();
 
     const payload = {
       ...form,
-      created_by: user?.id, // Added this to prevent database errors
+      created_by: session?.user?.id || null, // Ensure created_by is set
       visit_time: form.visit_time === '' ? null : form.visit_time,
     };
 
-    let savedVisit;
+    let savedVisitData;
 
-    if (editingVisit) {
-      const { data, error } = await supabase.from('school_visits').update(payload).eq('id', editingVisit.id).select().maybeSingle();
-      if (error) { console.error('Update Error:', error); alert(error.message); return; }
-      savedVisit = data;
-    } else {
-      const { data, error } = await supabase.from('school_visits').insert([payload]).select().maybeSingle();
-      if (error) { console.error('Insert Error:', error); alert(error.message); return; }
-      savedVisit = data;
-    }
+    try {
+      if (editingVisit) {
+        // Use maybeSingle to prevent coercion errors
+        const { data, error } = await supabase.from('school_visits').update(payload).eq('id', editingVisit.id).select().maybeSingle();
+        if (error) throw error;
+        savedVisitData = data;
+        await logActivity('Edited school visit', 'school_visit', payload.school_name, 'Updated visit details');
+      } else {
+        const { data, error } = await supabase.from('school_visits').insert([payload]).select().maybeSingle();
+        if (error) throw error;
+        savedVisitData = data;
+        await logActivity('Created school visit', 'school_visit', payload.school_name, 'New visit added');
+      }
 
-    // ONLY call the API if the database save actually worked
-    if (savedVisit) {
-      try {
+      // 2. Trigger Background Schedule API ONLY if we have a successful database row
+      if (savedVisitData?.id) {
         const res = await fetch('/api/schedule-reminder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            visit_id: savedVisit.id,
-            school_name: savedVisit.school_name,
-            visit_date: savedVisit.visit_date,
-            visit_time: savedVisit.visit_time,
-            reminder_time: savedVisit.reminder_time, // Standardized to reminder_time
-            old_message_id: savedVisit.qstash_message_id
+            visit_id: savedVisitData.id,
+            school_name: savedVisitData.school_name,
+            visit_date: savedVisitData.visit_date,
+            visit_time: savedVisitData.visit_time,
+            reminder: savedVisitData.reminder_time, // Send exactly what the API expects
+            old_message_id: savedVisitData.qstash_message_id
           })
         });
+        
         const scheduleData = await res.json();
+        
         if (scheduleData.messageId) {
-          await supabase.from('school_visits').update({ qstash_message_id: scheduleData.messageId }).eq('id', savedVisit.id);
+          await supabase.from('school_visits').update({ qstash_message_id: scheduleData.messageId }).eq('id', savedVisitData.id);
         }
-      } catch (err) {
-        console.error("Reminder API Error:", err);
       }
+    } catch (err) {
+      console.error("Critical Error during save:", err);
+      alert("Error: " + err.message);
+    } finally {
+      // 3. This MUST run to refresh the table and close the form
+      fetchVisits(); 
+      setShowForm(false); 
+      setEditingVisit(null); 
+      setForm(emptyForm);
     }
-
-    fetchVisits(); 
-    setShowForm(false); 
-    setEditingVisit(null); 
-    setForm(emptyForm);
   };
       
       const scheduleData = await res.json();
