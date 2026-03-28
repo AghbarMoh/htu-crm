@@ -27,8 +27,7 @@ export async function POST(request) {
 
   try {
     console.log("SENDING FROM:", 'HTU CRM <reminder@htucrm.com>');
-    await resend.emails.send({
-      from: 'HTU CRM <reminder@htucrm.com>', 
+const result = await resend.emails.send({      from: 'HTU CRM <reminder@htucrm.com>', 
       to: 'dalia.zawaideh@htu.edu.jo',
       subject: `🚨 Reminder: Visit at ${school_name} ${notice}!`,
       html: `
@@ -45,9 +44,11 @@ export async function POST(request) {
         </div>
       `,
     });
+    console.log("RESEND RESULT:", result);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  console.error("RESEND ERROR:", error);
+  return NextResponse.json({ error: error.message }, { status: 500 });
+}
 }
