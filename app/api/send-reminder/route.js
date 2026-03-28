@@ -26,6 +26,7 @@ export async function POST(request) {
   else if (reminder_time == "10080") notice = "in 1 Week";
 
   try {
+    console.log("SENDING FROM:", 'HTU CRM <reminder@htucrm.com>');
     await resend.emails.send({
       from: 'HTU CRM <reminder@htucrm.com>', 
       to: 'dalia.zawaideh@htu.edu.jo',
