@@ -79,7 +79,8 @@ export default function SchoolVisitsPage() {
       savedVisit = data;
       await logActivity('Created school visit', 'school_visit', payload.school_name, 'New visit added')
     }
-// --- Trigger Background Schedule API ---
+    
+    // --- Trigger Background Schedule API ---
     try {
       // ONLY call the API if a reminder is selected
       if (form.reminder_time !== 'none') {
@@ -105,10 +106,12 @@ export default function SchoolVisitsPage() {
         if (scheduleData.messageId) {
           await supabase.from('school_visits').update({ qstash_message_id: scheduleData.messageId }).eq('id', savedVisit.id);
         }
-      }
-    } catch (err) {
+      }} catch (err) {
       console.error("Failed to schedule reminder:", err);
     }
+
+    fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm)
+  }
  const handleEdit = (visit) => {
     setEditingVisit(visit)
     setForm({
