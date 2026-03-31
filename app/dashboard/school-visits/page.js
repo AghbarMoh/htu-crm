@@ -196,124 +196,254 @@ const handleUndoComplete = async (visitId) => {
   }
 
   const generateWord = async (visit = null) => {
-    alert('Generating Word Document...');
-const { 
-      Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
-      WidthType, HeadingLevel, AlignmentType, ImageRun 
-    } = await import('docx');
-    const { saveAs } = await import('file-saver');
-    const isAll = !visit;
-    const sections = [];
+  const {
+    Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+    WidthType, HeadingLevel, AlignmentType, BorderStyle, ShadingType,
+  } = await import('docx')
+  const { saveAs } = await import('file-saver')
 
-    // Header
-    sections.push(
-      new Paragraph({
-        text: "HTU Outreach CRM",
-        heading: HeadingLevel.HEADING_1,
-        alignment: AlignmentType.CENTER,
-      }),
-      new Paragraph({
-        text: isAll ? "All School Visits Report" : "School Visit Report",
-        heading: HeadingLevel.HEADING_2,
-        alignment: AlignmentType.CENTER,
-      }),
-      new Paragraph({
-        text: 'Generated: ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 400 },
-      })
-    );
+  const isAll = !visit
 
-    if (isAll) {
-      // Summary Stats
-      sections.push(new Paragraph({ text: "Summary", heading: HeadingLevel.HEADING_3, spacing: { before: 200, after: 200 } }));
-      
-      const summaryTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Metric", bold: true })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Value", bold: true })] })] }),
-            ],
-          }),
-          new TableRow({ children: [new TableCell({ children: [new Paragraph("Total School Visits")] }), new TableCell({ children: [new Paragraph(String(visits.length))] })] }),
-          new TableRow({ children: [new TableCell({ children: [new Paragraph("Completed Visits")] }), new TableCell({ children: [new Paragraph(String(Object.keys(completions).length))] })] }),
-          new TableRow({ children: [new TableCell({ children: [new Paragraph("Total Students Collected")] }), new TableCell({ children: [new Paragraph(String(visitStudents.length))] })] }),
-        ],
-      });
-      sections.push(summaryTable);
+  const RED = 'C0392B'
+  const WHITE = 'FFFFFF'
+  const LIGHT_GRAY = 'F5F5F5'
+  const DARK_GRAY = '2C2C2C'
+  const MID_GRAY = '666666'
 
-      // All Visits Data
-      sections.push(new Paragraph({ text: "All Visits", heading: HeadingLevel.HEADING_3, spacing: { before: 400, after: 200 } }));
+  const redHeading = (text) => new Paragraph({
+    spacing: { before: 320, after: 120 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: RED } },
+    children: [new TextRun({
+      text,
+      bold: true,
+      size: 26,
+      color: RED,
+      font: 'Calibri',
+    })],
+  })
 
-      const headerRow = new TableRow({
-        children: ['School Name', 'Type', 'City', 'Country', 'Date', 'Time', 'Status', 'Done', 'Students'].map(
-          text => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })] })
-        ),
-      });
+  const sectionLabel = (label, value) => new Paragraph({
+    spacing: { after: 80 },
+    children: [
+      new TextRun({ text: label + ': ', bold: true, size: 20, color: DARK_GRAY, font: 'Calibri' }),
+      new TextRun({ text: value || '-', size: 20, color: MID_GRAY, font: 'Calibri' }),
+    ],
+  })
 
-      const dataRows = visits.map(v => new TableRow({
-        children: [
-          new TableCell({ children: [new Paragraph(v.school_name)] }),
-          new TableCell({ children: [new Paragraph(v.type)] }),
-          new TableCell({ children: [new Paragraph(v.city || '-')] }),
-          new TableCell({ children: [new Paragraph(v.country || '-')] }),
-          new TableCell({ children: [new Paragraph(v.visit_date || '-')] }),
-          new TableCell({ children: [new Paragraph(v.visit_time || '-')] }),
-          new TableCell({ children: [new Paragraph(v.connection_status || 'New')] }),
-          new TableCell({ children: [new Paragraph(completions[v.id] ? 'Yes' : 'No')] }),
-          new TableCell({ children: [new Paragraph(String(visitStudents.filter(vs => vs.visit_id === v.id).length))] }),
-        ]
-      }));
+  const divider = () => new Paragraph({
+    spacing: { before: 200, after: 200 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: 'E0E0E0' } },
+    children: [new TextRun({ text: '' })],
+  })
 
-      sections.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...dataRows] }));
+  const sections = []
 
-    } else {
-      // Single Visit Data
-      sections.push(
-        new Paragraph({ text: visit.school_name, heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 200 } }),
-        new Paragraph(`Visit Date: ${visit.visit_date || '-'} | Time: ${visit.visit_time || '-'}`),
-        new Paragraph(`Type: ${visit.type}`),
-        new Paragraph(`School Type: ${visit.private_or_public || '-'}`),
-        new Paragraph(`City: ${visit.city || '-'} | Country: ${visit.country || '-'}`),
-        new Paragraph({ text: "What Was Accomplished", heading: HeadingLevel.HEADING_3, spacing: { before: 400, after: 200 } }),
-        new Paragraph(completions[visit.id]?.comment || "Not marked as done yet.")
-      );
+  // ── COVER HEADER ────────────────────────────────────────────────────
+  sections.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 60 },
+      shading: { type: ShadingType.SOLID, color: RED, fill: RED },
+      children: [new TextRun({ text: '  HTU Outreach CRM  ', bold: true, size: 40, color: WHITE, font: 'Calibri' })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 40 },
+      shading: { type: ShadingType.SOLID, color: RED, fill: RED },
+      children: [new TextRun({
+        text: isAll ? '  School Visits Report  ' : '  School Visit Report  ',
+        size: 26, color: WHITE, font: 'Calibri',
+      })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 40 },
+      shading: { type: ShadingType.SOLID, color: RED, fill: RED },
+      children: [new TextRun({
+        text: 'Dalia Zawaideh  ',
+        italics: true, size: 22, color: 'FFCCCC', font: 'Calibri',
+      })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 40 },
+      shading: { type: ShadingType.SOLID, color: RED, fill: RED },
+      children: [new TextRun({
+        text: '  Generated: ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + '  ',
+        size: 20, color: 'FFCCCC', font: 'Calibri',
+      })],
+    }),
+    new Paragraph({ spacing: { after: 300 }, children: [new TextRun({ text: '' })] }),
+  )
 
-      const students = visitStudents.filter(vs => vs.visit_id === visit.id);
-      sections.push(new Paragraph({ text: `Students Collected (${students.length})`, heading: HeadingLevel.HEADING_3, spacing: { before: 400, after: 200 } }));
+  if (isAll) {
+    // ── SUMMARY SECTION ────────────────────────────────────────────────
+    sections.push(redHeading('Executive Summary'))
+    sections.push(new Paragraph({
+      spacing: { after: 200 },
+      children: [new TextRun({
+        text: 'This report provides a comprehensive overview of all school visits conducted by the HTU Outreach team.',
+        size: 20, color: MID_GRAY, font: 'Calibri', italics: true,
+      })],
+    }))
 
-      if (students.length > 0) {
-        const studentHeaderRow = new TableRow({
-          children: ['Name', 'Email', 'Phone', 'Grade', 'Major', 'Matched'].map(
-            text => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })] })
-          ),
-        });
-
-        const studentRows = students.map(s => new TableRow({
+    const summaryTable = new Table({
+      width: { size: 50, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
           children: [
-            new TableCell({ children: [new Paragraph(s.full_name)] }),
-            new TableCell({ children: [new Paragraph(s.email || '-')] }),
-            new TableCell({ children: [new Paragraph(s.phone || '-')] }),
-            new TableCell({ children: [new Paragraph(s.grade || '-')] }),
-            new TableCell({ children: [new Paragraph(s.major_interested || '-')] }),
-            new TableCell({ children: [new Paragraph(s.is_matched ? 'Yes' : 'No')] }),
-          ]
-        }));
+            new TableCell({
+              shading: { type: ShadingType.SOLID, color: RED, fill: RED },
+              children: [new Paragraph({ children: [new TextRun({ text: 'Metric', bold: true, color: WHITE, size: 20, font: 'Calibri' })] })],
+            }),
+            new TableCell({
+              shading: { type: ShadingType.SOLID, color: RED, fill: RED },
+              children: [new Paragraph({ children: [new TextRun({ text: 'Value', bold: true, color: WHITE, size: 20, font: 'Calibri' })] })],
+            }),
+          ],
+        }),
+        ...[
+          ['Total School Visits', String(visits.length)],
+          ['Completed Visits', String(Object.keys(completions).length)],
+          ['Pending Visits', String(visits.length - Object.keys(completions).length)],
+          ['Total Students Collected', String(visitStudents.length)],
+        ].map(([label, value], i) => new TableRow({
+          children: [
+            new TableCell({
+              shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE },
+              children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 20, font: 'Calibri', color: DARK_GRAY })] })],
+            }),
+            new TableCell({
+              shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE },
+              children: [new Paragraph({ children: [new TextRun({ text: value, size: 20, font: 'Calibri', color: MID_GRAY })] })],
+            }),
+          ],
+        })),
+      ],
+    })
+    sections.push(summaryTable)
+    sections.push(divider())
 
-        sections.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [studentHeaderRow, ...studentRows] }));
-      } else {
-        sections.push(new Paragraph("No students collected during this visit."));
-      }
+    // ── ALL VISITS TABLE ───────────────────────────────────────────────
+    sections.push(redHeading('All School Visits'))
+
+    const headerCols = ['School Name', 'Type', 'City', 'Date', 'Time', 'Status', 'Completed', 'Students']
+    const headerRow = new TableRow({
+      children: headerCols.map(text => new TableCell({
+        shading: { type: ShadingType.SOLID, color: RED, fill: RED },
+        children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: WHITE, size: 18, font: 'Calibri' })] })],
+      })),
+    })
+
+    const dataRows = visits.map((v, i) => new TableRow({
+      children: [
+        v.school_name,
+        v.type,
+        v.city || '-',
+        v.visit_date || '-',
+        v.visit_time || '-',
+        v.connection_status || 'New',
+        completions[v.id] ? 'Yes' : 'No',
+        String(visitStudents.filter(vs => vs.visit_id === v.id).length),
+      ].map(text => new TableCell({
+        shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE },
+        children: [new Paragraph({ children: [new TextRun({ text: String(text), size: 18, font: 'Calibri', color: DARK_GRAY })] })],
+      })),
+    }))
+
+    sections.push(new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [headerRow, ...dataRows],
+    }))
+
+  } else {
+    // ── SINGLE VISIT ───────────────────────────────────────────────────
+    sections.push(redHeading('Visit Details'))
+
+    sections.push(
+      sectionLabel('School Name', visit.school_name),
+      sectionLabel('Visit Date', visit.visit_date || '-'),
+      sectionLabel('Visit Time', visit.visit_time || '-'),
+      sectionLabel('Visit Type', visit.type),
+      sectionLabel('School Type', visit.private_or_public || '-'),
+      sectionLabel('City', visit.city || '-'),
+      sectionLabel('Country', visit.country || '-'),
+      sectionLabel('Connection Status', visit.connection_status || 'New'),
+    )
+
+    sections.push(divider())
+    sections.push(redHeading('What Was Accomplished'))
+    sections.push(new Paragraph({
+      spacing: { after: 200 },
+      children: [new TextRun({
+        text: completions[visit.id]?.comment || 'Not marked as done yet.',
+        size: 20, color: DARK_GRAY, font: 'Calibri',
+      })],
+    }))
+
+    const students = visitStudents.filter(vs => vs.visit_id === visit.id)
+    sections.push(divider())
+    sections.push(redHeading('Students Collected (' + students.length + ')'))
+
+    if (students.length > 0) {
+      const studentCols = ['Name', 'Email', 'Phone', 'Grade', 'Major Interested', 'Matched']
+      const studentHeaderRow = new TableRow({
+        children: studentCols.map(text => new TableCell({
+          shading: { type: ShadingType.SOLID, color: RED, fill: RED },
+          children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: WHITE, size: 18, font: 'Calibri' })] })],
+        })),
+      })
+      const studentRows = students.map((s, i) => new TableRow({
+        children: [
+          s.full_name, s.email || '-', s.phone || '-',
+          s.grade || '-', s.major_interested || '-', s.is_matched ? 'Yes' : 'No',
+        ].map(text => new TableCell({
+          shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE },
+          children: [new Paragraph({ children: [new TextRun({ text: String(text), size: 18, font: 'Calibri', color: DARK_GRAY })] })],
+        })),
+      }))
+      sections.push(new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [studentHeaderRow, ...studentRows],
+      }))
+    } else {
+      sections.push(new Paragraph({
+        children: [new TextRun({ text: 'No students were collected during this visit.', size: 20, color: MID_GRAY, font: 'Calibri', italics: true })],
+      }))
     }
-
-    const doc = new Document({ sections: [{ properties: {}, children: sections }] });
-    const blob = await Packer.toBlob(doc);
-    const filename = isAll ? 'HTU_All_Visits_Report.docx' : `HTU_Visit_${visit.school_name.replace(/\s+/g, '_')}.docx`;
-    saveAs(blob, filename);
-    await logActivity('Exported Word Doc', 'school_visit', isAll ? 'All Visits' : visit.school_name, 'Word document generated');
   }
+
+  // ── FOOTER ─────────────────────────────────────────────────────────
+  sections.push(
+    new Paragraph({ spacing: { before: 400 }, children: [new TextRun({ text: '' })] }),
+    divider(),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({
+        text: 'HTU Student Recruitment & Outreach Office  |  Prepared for Dalia Zawaideh',
+        size: 16, color: MID_GRAY, font: 'Calibri', italics: true,
+      })],
+    }),
+  )
+
+  const doc = new Document({
+    sections: [{
+      properties: {
+        page: {
+          margin: { top: 720, bottom: 720, left: 900, right: 900 },
+        },
+      },
+      children: sections,
+    }],
+  })
+
+  const blob = await Packer.toBlob(doc)
+  const filename = isAll
+    ? 'HTU_All_Visits_Report.docx'
+    : 'HTU_Visit_' + (visit.school_name.replace(/[\u0600-\u06FF\s]+/g, '') || 'Report') + '.docx'
+  saveAs(blob, filename)
+  await logActivity('Exported Word Doc', 'school_visit', isAll ? 'All Visits' : visit.school_name, 'Word document generated')
+}
  const [visitStudents, setVisitStudents] = useState([])
 
   const fetchVisitStudents = async () => {
