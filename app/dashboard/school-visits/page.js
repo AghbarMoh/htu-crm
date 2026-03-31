@@ -29,6 +29,7 @@ export default function SchoolVisitsPage() {
     visit_date: '',
     visit_time: '',
     connection_status: 'New',
+    companion: '',
     reminder_time: 'none', 
     qstash_message_id: null,
   }
@@ -123,6 +124,7 @@ export default function SchoolVisitsPage() {
       visit_date: visit.visit_date,
       visit_time: visit.visit_time || '',
       connection_status: visit.connection_status || 'New',
+      companion: visit.companion || '',
       reminder_time: visit.reminder_time || '60',
       qstash_message_id: visit.qstash_message_id || null,
     })
@@ -327,7 +329,7 @@ const handleUndoComplete = async (visitId) => {
     // ── ALL VISITS TABLE ───────────────────────────────────────────────
     sections.push(redHeading('All School Visits'))
 
-    const headerCols = ['School Name', 'Type', 'City', 'Date', 'Time', 'Status', 'Completed', 'Students']
+    const headerCols = ['School Name', 'Type', 'City', 'Date', 'Time', 'Status', 'Companion', 'Completed', 'Students']
     const headerRow = new TableRow({
       children: headerCols.map(text => new TableCell({
         shading: { type: ShadingType.SOLID, color: RED, fill: RED },
@@ -343,6 +345,7 @@ const handleUndoComplete = async (visitId) => {
         v.visit_date || '-',
         v.visit_time || '-',
         v.connection_status || 'New',
+        v.companion || '-',
         completions[v.id] ? 'Yes' : 'No',
         String(visitStudents.filter(vs => vs.visit_id === v.id).length),
       ].map(text => new TableCell({
@@ -369,6 +372,8 @@ const handleUndoComplete = async (visitId) => {
       sectionLabel('City', visit.city || '-'),
       sectionLabel('Country', visit.country || '-'),
       sectionLabel('Connection Status', visit.connection_status || 'New'),
+      sectionLabel('Companion', visit.companion || '-'),
+
     )
 
     sections.push(divider())
@@ -531,11 +536,11 @@ const handleUndoComplete = async (visitId) => {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-{['School Name', 'Type', 'School Type', 'City', 'Date', 'Time', 'Status','Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}            </tr>
+{['School Name', 'Type', 'School Type', 'City', 'Date', 'Time', 'Status', 'Companion','Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}            </tr>
           </thead>
           <tbody>
-            {loading ? <tr><td colSpan={9} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>Loading...</td></tr> : 
-             pendingVisits.length === 0 ? <tr><td colSpan={9} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No pending visits</td></tr> : 
+            {loading ? <tr><td colSpan={10} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>Loading...</td></tr> : 
+             pendingVisits.length === 0 ? <tr><td colSpan={10} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No pending visits</td></tr> : 
              pendingVisits.map((visit) => (
                 <tr key={visit.id} style={{ transition: 'background 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                  <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{visit.school_name}</td>
@@ -545,6 +550,7 @@ const handleUndoComplete = async (visitId) => {
                   <td style={s.td}>{visit.visit_date}</td>
                   <td style={s.td}>{visit.visit_time || '-'}</td>
                   <td style={s.td}><span style={{ color: visit.connection_status === 'New' ? '#10b981' : '#f59e0b', fontWeight: '500' }}>{visit.connection_status || 'New'}</span></td>
+                  <td style={s.td}>{visit.companion || '-'}</td>
                   <td style={s.td}>
                     <button onClick={() => handleMarkDone(visit)} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                       <CheckCircle size={13} /> Mark Done
@@ -576,16 +582,17 @@ const handleUndoComplete = async (visitId) => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-{['School Name', 'Type', 'School Type', 'Date', 'Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}              </tr>
+{['School Name', 'Type', 'School Type', 'Date','Companion', 'Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}              </tr>
             </thead>
             <tbody>
-              {completedVisits.length === 0 ? <tr><td colSpan={5} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No completed visits yet</td></tr> : 
+              {completedVisits.length === 0 ? <tr><td colSpan={6} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No completed visits yet</td></tr> : 
                completedVisits.map((visit) => (
                   <tr key={visit.id} style={{ background: 'rgba(16,185,129,0.02)' }}>
                     <td style={{ ...s.td, color: '#ffffff', fontWeight: '500', textDecoration: 'line-through', opacity: 0.7 }}>{visit.school_name}</td>
                     <td style={s.td}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{visit.type}</span></td>
                     <td style={s.td}><span style={{ textTransform: 'capitalize' }}>{visit.private_or_public || '-'}</span></td>
                     <td style={s.td}>{visit.visit_date}</td>
+                    <td style={s.td}>{visit.companion || '-'}</td>
                     <td style={s.td}>
                       <div>
                         <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '600' }}>✓ Done</span>
@@ -645,6 +652,16 @@ const handleUndoComplete = async (visitId) => {
                   <option value="public">Public</option>
                 </select>
               </div>
+                <div>
+  <label style={s.label}>Companion</label>
+  <input
+    type="text"
+    value={form.companion}
+    onChange={(e) => setForm({ ...form, companion: e.target.value })}
+    placeholder="e.g. Aghbar"
+    style={s.input}
+  />
+</div>
               <div>
                 <label style={s.label}>Status (New/Repeated) *</label>
                 <select value={form.connection_status} onChange={(e) => setForm({ ...form, connection_status: e.target.value })} style={s.input}>
