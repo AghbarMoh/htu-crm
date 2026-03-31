@@ -30,7 +30,9 @@ export default function VisitStudentsPage() {
   }
 
   const fetchVisits = async () => {
-    const { data, error } = await supabase.from('school_visits').select('id, school_name, visit_date').order('visit_date', { ascending: false })
+    // Adding visit_completions!inner forces an INNER JOIN, meaning it will ONLY 
+    // fetch school visits that have a matching completion record.
+    const { data, error } = await supabase.from('school_visits').select('id, school_name, visit_date, visit_completions!inner(visit_id)').order('visit_date', { ascending: false })
     if (!error) setVisits(data)
   }
 

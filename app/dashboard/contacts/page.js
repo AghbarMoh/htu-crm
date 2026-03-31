@@ -2,7 +2,7 @@
 import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
-import { Plus, Pencil, Trash2, Mail, Phone } from 'lucide-react'
+import { Plus, Pencil, Trash2, Mail, Phone, FileText } from 'lucide-react'
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState([])
@@ -57,6 +57,55 @@ export default function ContactsPage() {
       fetchContacts()
     }
   }
+  const generateWord = async () => {
+    alert('Generating Word Document...');
+    const { 
+      Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
+      WidthType, HeadingLevel, AlignmentType 
+    } = await import('docx');
+    const { saveAs } = await import('file-saver');
+
+    const tableHeader = new TableRow({
+      children: ['Full Name', 'Role', 'School', 'Email', 'Phone', 'Notes'].map(
+        text => new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })],
+          background: { fill: "f3f4f6" }
+        })
+      ),
+    });
+
+    const dataRows = filteredContacts.map(c => new TableRow({
+      children: [
+        new TableCell({ children: [new Paragraph(c.full_name || '-')] }),
+        new TableCell({ children: [new Paragraph(c.role || '-')] }),
+        new TableCell({ children: [new Paragraph(c.school_name || '-')] }),
+        new TableCell({ children: [new Paragraph(c.email || '-')] }),
+        new TableCell({ children: [new Paragraph(c.phone || '-')] }),
+        new TableCell({ children: [new Paragraph(c.notes || '-')] }),
+      ]
+    }));
+
+    const doc = new Document({
+      sections: [{
+        children: [
+          new Paragraph({
+            text: "HTU CRM - Contacts Report",
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 400 },
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [tableHeader, ...dataRows],
+          }),
+        ],
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `HTU_Contacts_${new Date().toISOString().split('T')[0]}.docx`);
+    await logActivity('Exported Word Doc', 'contact', 'All Contacts', 'Contacts list exported to Word');
+  };
 
   const filteredContacts = filterRole === 'all' ? contacts : contacts.filter(c => c.role === filterRole)
 
@@ -77,10 +126,19 @@ export default function ContactsPage() {
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>Contacts</h1>
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>Counselors, managers and important people</p>
         </div>
-        <button onClick={() => { setShowForm(true); setEditingContact(null); setForm(emptyForm) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
-          <Plus size={16} />
-          Add Contact
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            onClick={generateWord} 
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#f59e0b', cursor: 'pointer' }}
+          >
+            <FileText size={16} />
+            Export Word
+          </button>
+          <button onClick={() => { setShowForm(true); setEditingContact(null); setForm(emptyForm) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
+            <Plus size={16} />
+            Add Contact
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>

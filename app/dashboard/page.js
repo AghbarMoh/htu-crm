@@ -16,7 +16,7 @@ export default function DashboardPage() {
   })
   const [todayTasks, setTodayTasks] = useState([])
   const [pendingTasks, setPendingTasks] = useState([])
-  const [recentApplicants, setRecentApplicants] = useState([])
+  const [upcomingVisits, setUpcomingVisits] = useState([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
   const supabase = createClient()
@@ -43,13 +43,13 @@ export default function DashboardPage() {
     setLoading(true)
     const today = new Date().toISOString().split('T')[0]
 
-    const [a, v, vs, c, tasks, recent] = await Promise.all([
+    const [a, v, vs, c, tasks, upcoming] = await Promise.all([
      supabase.from('applicants').select('id, paid, is_matched').eq('is_archived', false),
-      supabase.from('school_visits').select('id'),
+      supabase.from('visit_completions').select('id'),
       supabase.from('visit_students').select('id'),
       supabase.from('contacts').select('id'),
       supabase.from('tasks').select('*').eq('is_done', false).order('due_date'),
-      supabase.from('applicants').select('full_name, major, paid, imported_at').eq('is_archived', false).order('imported_at', { ascending: false }).limit(5),
+      supabase.from('school_visits').select('*').gte('visit_date', today).order('visit_date', { ascending: true }).limit(4),
     ])
 
     if (!a.error) {
@@ -70,9 +70,9 @@ export default function DashboardPage() {
       setPendingTasks(pendingList)
     }
 
-    if (!recent.error) setRecentApplicants(recent.data)
+   if (!upcoming.error) setUpcomingVisits(upcoming.data)
     setLoading(false)
-  }
+  } // <-- ADDED MISSING CLOSING BRACE HERE
 
   const handleCompleteTask = async (id) => {
     await supabase.from('tasks').update({ is_done: true }).eq('id', id)
@@ -98,8 +98,7 @@ export default function DashboardPage() {
 
   const statCards = [
     { label: 'Total Applicants', value: stats.totalApplicants, icon: ClipboardList, color: '#3b82f6', href: '/dashboard/applicants' },
-    { label: 'Paid', value: stats.paidApplicants, icon: CheckCircle, color: '#10b981', href: '/dashboard/applicants' },
-    { label: 'School Visits', value: stats.totalVisits, icon: School, color: '#8b5cf6', href: '/dashboard/school-visits' },
+    { label: 'Completed Visits', value: stats.totalVisits, icon: School, color: '#8b5cf6', href: '/dashboard/school-visits' },
     { label: 'Visit Students', value: stats.totalVisitStudents, icon: Users, color: '#f59e0b', href: '/dashboard/visit-students' },
     { label: 'Matched', value: stats.matchedApplicants, icon: CheckCircle, color: '#06b6d4', href: '/dashboard/applicants' },
     { label: 'Contacts', value: stats.totalContacts, icon: BookUser, color: '#ec4899', href: '/dashboard/contacts' },
@@ -118,7 +117,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '24px' }}>
         {statCards.map((stat) => {
           const Icon = stat.icon
           return (
@@ -156,7 +155,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' }}>        
         {/* Today's Tasks */}
         <div style={cardStyle}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -174,7 +173,7 @@ export default function DashboardPage() {
                   </button>
                   <div>
                     <p style={{ fontSize: '13px', color: '#ffffff', margin: '0 0 2px 0' }}>{task.title}</p>
-                    {task.description && <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>{task.description}</p>}
+                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>{task.description}</p>
                   </div>
                 </div>
               ))}
@@ -190,7 +189,7 @@ export default function DashboardPage() {
                     <Circle size={14} style={{ color: isOverdue(task.due_date) ? '#ef4444' : 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
                     <div>
                       <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', margin: '0 0 1px 0' }}>{task.title}</p>
-                      {task.due_date && <p style={{ fontSize: '11px', color: isOverdue(task.due_date) ? '#ef4444' : 'rgba(255,255,255,0.25)', margin: 0 }}>{isOverdue(task.due_date) ? 'Overdue: ' : 'Due: '}{task.due_date}</p>}
+                      <p style={{ fontSize: '11px', color: isOverdue(task.due_date) ? '#ef4444' : 'rgba(255,255,255,0.25)', margin: 0 }}>{isOverdue(task.due_date) ? 'Overdue: ' : 'Due: '}{task.due_date}</p>
                     </div>
                   </div>
                 ))}
@@ -198,39 +197,45 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-
-        {/* Recent Applicants */}
+            {/* Upcoming School Visits */}
         <div style={cardStyle}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', margin: 0 }}>Recent Applicants</h2>
-            <Link href="/dashboard/applicants" style={{ fontSize: '12px', color: '#3b82f6', textDecoration: 'none' }}>View all</Link>
+            <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', margin: 0 }}>Upcoming Visits</h2>
+            <Link href="/dashboard/school-visits" style={{ fontSize: '12px', color: '#8b5cf6', textDecoration: 'none' }}>View all</Link>
           </div>
-          {recentApplicants.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: '20px 0' }}>No applicants yet</p>
+          {upcomingVisits.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: '20px 0' }}>No upcoming visits scheduled</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {recentApplicants.map((applicant, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)' }}>
-                  <div>
-                    <p style={{ fontSize: '13px', color: '#ffffff', margin: '0 0 2px 0' }}>{applicant.full_name}</p>
-                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>{applicant.major || 'No major'}</p>
+              {upcomingVisits.map((visit, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)' }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    
+                    {/* Calendar Date Icon */}
+                    <div style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa', padding: '8px', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '45px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase' }}>
+                        {new Date(visit.visit_date).toLocaleDateString('en-US', { month: 'short' })}
+                      </span>
+                      <span style={{ fontSize: '14px', fontWeight: '700' }}>
+                        {new Date(visit.visit_date).getDate()}
+                      </span>
+                    </div>
+
+                    {/* Visit Info */}
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff', margin: '0 0 2px 0' }}>{visit.school_name}</p>
+                      <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                        {visit.visit_time ? `${visit.visit_time} • ` : ''}{visit.type}
+                      </p>
+                    </div>
+
                   </div>
-                  <span style={{
-                    padding: '3px 10px',
-                    borderRadius: '20px',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    background: applicant.paid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-                    color: applicant.paid ? '#10b981' : '#ef4444',
-                  }}>
-                    {applicant.paid ? 'Paid' : 'Not Paid'}
-                  </span>
                 </div>
               ))}
             </div>
           )}
         </div>
       </div>
-    </div>
+    </div> 
   )
 }

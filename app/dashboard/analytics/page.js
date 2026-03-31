@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { Download } from 'lucide-react'
 
 
@@ -13,16 +13,15 @@ export default function AnalyticsPage() {
   const [contacts, setContacts] = useState([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
+  const [visitBreakdownFilter, setVisitBreakdownFilter] = useState('general') // default filter
 
   useEffect(() => { fetchAll() }, [])
-
-
 
   const fetchAll = async () => {
     setLoading(true)
     const [a, v, vs, c] = await Promise.all([
       supabase.from('applicants').select('*'),
-      supabase.from('school_visits').select('*'),
+      supabase.from('school_visits').select('*, visit_completions!inner(visit_id)'),
       supabase.from('visit_students').select('*'),
       supabase.from('contacts').select('*'),
     ])
@@ -34,8 +33,6 @@ export default function AnalyticsPage() {
   }
 
   const totalApplicants = applicants.length
-  const paidApplicants = applicants.filter(a => a.paid).length
-  const notPaidApplicants = applicants.filter(a => !a.paid).length
   const matchedApplicants = applicants.filter(a => a.is_matched).length
   const totalVisits = visits.length
   const totalVisitStudents = visitStudents.length
@@ -47,32 +44,43 @@ export default function AnalyticsPage() {
   applicants.forEach(a => { if (a.major) majorCounts[a.major] = (majorCounts[a.major] || 0) + 1 })
   const majorData = Object.entries(majorCounts).map(([name, value]) => ({ name: name.length > 15 ? name.slice(0, 15) + '...' : name, value })).sort((a, b) => b.value - a.value)
 
-  const heardCounts = {}
-  applicants.forEach(a => { if (a.heard_about_htu) heardCounts[a.heard_about_htu] = (heardCounts[a.heard_about_htu] || 0) + 1 })
-  const heardData = Object.entries(heardCounts).map(([name, value]) => ({ name: name.length > 20 ? name.slice(0, 20) + '...' : name, value })).sort((a, b) => b.value - a.value).slice(0, 6)
-
-  const nationalityCounts = {}
-  applicants.forEach(a => { if (a.nationality) nationalityCounts[a.nationality] = (nationalityCounts[a.nationality] || 0) + 1 })
-  const nationalityData = Object.entries(nationalityCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 6)
-
-  const visitMonths = {}
-  visits.forEach(v => { if (v.visit_date) { const month = v.visit_date.slice(0, 7); visitMonths[month] = (visitMonths[month] || 0) + 1 } })
-  const visitsPerMonth = Object.entries(visitMonths).map(([name, value]) => ({ name, value })).sort((a, b) => a.name.localeCompare(b.name))
-
-  const jordanVisits = visits.filter(v => v.type === 'jordan_tour').length
-  const intlVisits = visits.filter(v => v.type === 'international_fair').length
-  const visitTypeData = [{ name: 'Jordan Tours', value: jordanVisits }, { name: 'International Fairs', value: intlVisits }]
-
-  const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4']
 
   const handleExport = async () => {
     const XLSX = await import('xlsx')
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Metric', 'Value'], ['Total Applicants', totalApplicants], ['Paid', paidApplicants], ['Not Paid', notPaidApplicants], ['Matched', matchedApplicants], ['School Visits', totalVisits], ['Visit Students', totalVisitStudents], ['Contacts', totalContacts]]), 'Summary')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Metric', 'Value'], ['Total Applicants', totalApplicants], ['Matched', matchedApplicants], ['Completed Visits', totalVisits], ['Visit Students', totalVisitStudents], ['Contacts', totalContacts]]), 'Summary')
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Major', 'Count'], ...Object.entries(majorCounts)]), 'Majors')
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Source', 'Count'], ...Object.entries(heardCounts)]), 'How Heard')
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Nationality', 'Count'], ...Object.entries(nationalityCounts)]), 'Nationalities')
     XLSX.writeFile(wb, 'HTU_Analytics_Report.xlsx')
+  }
+  const handleExportBreakdown = async () => {
+    const XLSX = await import('xlsx')
+    const wb = XLSX.utils.book_new()
+    
+    const dataMap = {}
+    const categories = new Set()
+    
+    visits.forEach(v => {
+      if (!v.visit_date) return
+      const dateObj = new Date(v.visit_date)
+      const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`
+      const groupKey = visitBreakdownFilter === 'general' ? 'Total Visits' : (v[visitBreakdownFilter] || 'Unknown')
+      categories.add(groupKey)
+
+      if (!dataMap[monthKey]) dataMap[monthKey] = { Month: monthKey }
+      dataMap[monthKey][groupKey] = (dataMap[monthKey][groupKey] || 0) + 1
+    })
+
+    const chartKeys = Array.from(categories)
+    const rows = Object.values(dataMap).sort((a, b) => a.Month.localeCompare(b.Month))
+    
+    const worksheetData = [
+      ['Month', ...chartKeys],
+      ...rows.map(row => [row.Month, ...chartKeys.map(k => row[k] || 0)])
+    ]
+
+    const ws = XLSX.utils.aoa_to_sheet(worksheetData)
+    XLSX.utils.book_append_sheet(wb, ws, 'Visits Breakdown')
+    XLSX.writeFile(wb, `HTU_Visits_Breakdown_${visitBreakdownFilter}.xlsx`)
   }
 
   const customTooltipStyle = { background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px', color: '#ffffff' }
@@ -93,18 +101,16 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
         {[
           { label: 'Total Applicants', value: totalApplicants, color: '#3b82f6' },
-          { label: 'Paid', value: paidApplicants, color: '#10b981' },
           { label: 'Matched with Visits', value: matchedApplicants, color: '#8b5cf6' },
           { label: 'Conversion Rate', value: totalVisitStudents > 0 ? Math.round((matchedApplicants / totalVisitStudents) * 100) + '%' : '0%', color: '#06b6d4' },
-          { label: 'School Visits', value: totalVisits, color: '#f59e0b' },
+          { label: 'Completed Visits', value: totalVisits, color: '#f59e0b' },
           { label: 'New Schools', value: newVisitsCount, color: '#10b981' },
           { label: 'Repeated Schools', value: repeatedVisitsCount, color: '#8b5cf6' },
           { label: 'Visit Students', value: totalVisitStudents, color: '#f97316' },
           { label: 'Contacts', value: totalContacts, color: '#ec4899' },
-          { label: 'Not Paid', value: notPaidApplicants, color: '#ef4444' },
         ].map((stat) => (
           <div key={stat.label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '14px', padding: '16px' }}>
             <p style={{ fontSize: '24px', fontWeight: '700', color: stat.color, margin: '0 0 4px 0' }}>{stat.value}</p>
@@ -113,149 +119,104 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      {/* Charts Row 1 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '20px' }}>
-          <h2 style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Applicants by Major</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={majorData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
-              <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
-              <Tooltip contentStyle={customTooltipStyle} />
-              <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '20px' }}>
-          <h2 style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>How Students Heard About HTU</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={heardData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis type="number" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} width={120} />
-              <Tooltip contentStyle={customTooltipStyle} />
-              <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Charts Row 2 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', marginBottom: '16px' }}>
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '20px' }}>
-          <h2 style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>School Visits per Month</h2>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={visitsPerMonth}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
-              <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
-              <Tooltip contentStyle={customTooltipStyle} />
-              <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '20px' }}>
-          <h2 style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Visit Types</h2>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie data={visitTypeData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value">
-                {visitTypeData.map((entry, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
-              </Pie>
-              <Tooltip contentStyle={customTooltipStyle} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-            {visitTypeData.map((item, i) => (
-              <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[i], flexShrink: 0 }} />
-                {item.name}: {item.value}
-              </div>
-            ))}
+      {/* Dynamic Completed Visits Analysis Chart (MOVED TO TOP) */}
+      <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#10b981', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Completed Visits Breakdown
+            </h2>
+            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>Monthly analysis of all accomplished visits</p>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              onClick={handleExportBreakdown}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '600', color: '#60a5fa', cursor: 'pointer' }}
+            >
+              <Download size={14} />
+              Export Breakdown
+            </button>
+            <select 
+              value={visitBreakdownFilter} 
+              onChange={(e) => setVisitBreakdownFilter(e.target.value)}
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: '#ffffff', outline: 'none', cursor: 'pointer' }}
+            >
+              <option value="general">In General (Total Visits)</option>
+              <option value="type">Group by Visit Type</option>
+              <option value="private_or_public">Group by School Type (Private/Public)</option>
+              <option value="connection_status">Group by Status (New/Repeated)</option>
+            </select>
           </div>
         </div>
+
+        {(() => {
+          // 1. Process data based on the selected filter
+          const dataMap = {};
+          const keys = new Set();
+          
+          visits.forEach(v => {
+            if (!v.visit_date) return;
+            const dateObj = new Date(v.visit_date);
+            const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+            const monthLabel = dateObj.toLocaleString('default', { month: 'short', year: 'numeric' });
+            
+            // Get the value based on the dropdown (e.g. 'School Fairs', 'Private', 'New')
+            const groupKey = visitBreakdownFilter === 'general' ? 'Total Visits' : (v[visitBreakdownFilter] || 'Unknown');
+            keys.add(groupKey);
+
+            if (!dataMap[monthKey]) {
+              dataMap[monthKey] = { sortKey: monthKey, month: monthLabel };
+            }
+            dataMap[monthKey][groupKey] = (dataMap[monthKey][groupKey] || 0) + 1;
+          });
+
+          const chartData = Object.values(dataMap).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+          const chartKeys = Array.from(keys);
+          const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+
+          // 2. Render the Chart
+          return chartData.length === 0 ? (
+             <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '40px 0' }}>No completed visits to display.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }} />
+                <YAxis tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }} />
+                <Tooltip contentStyle={customTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
+                <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', paddingTop: '10px' }} />
+                
+                {/* Dynamically create stacked bars based on the available categories */}
+                {chartKeys.map((key, index) => (
+                  <Bar 
+                    key={key} 
+                    dataKey={key} 
+                    stackId="a" 
+                    fill={COLORS[index % COLORS.length]} 
+                    radius={index === chartKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]} 
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          )
+        })()}
       </div>
 
-      {/* Nationality Chart */}
-      <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '20px' }}>
-        <h2 style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Applicants by Nationality (Top 6)</h2>
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={nationalityData}>
+      {/* Bottom Chart Row (Applicants by Major) */}
+      <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Applicants by Major</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={majorData}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
             <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
             <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
-            <Tooltip contentStyle={customTooltipStyle} />
-            <Bar dataKey="value" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+            <Tooltip contentStyle={customTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
+            <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
-      {/* School Conversion Table */}
-      <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '20px', marginTop: '16px' }}>
-        <h2 style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>School Visit Conversion</h2>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['School Name', 'Students Visited', 'Applied', 'Paid', 'Conversion Rate'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(() => {
-                const schoolMap = {}
-                visits.forEach(v => {
-                  if (!schoolMap[v.school_name]) schoolMap[v.school_name] = { name: v.school_name, visited: 0, applied: 0, paid: 0 }
-                })
-                visitStudents.forEach(vs => {
-                  const visit = visits.find(v => v.id === vs.visit_id)
-                  if (visit) {
-                    if (!schoolMap[visit.school_name]) schoolMap[visit.school_name] = { name: visit.school_name, visited: 0, applied: 0, paid: 0 }
-                    schoolMap[visit.school_name].visited++
-                    if (vs.is_matched) {
-                      schoolMap[visit.school_name].applied++
-                      const matchedApplicant = applicants.find(a => a.id === vs.matched_applicant_id)
-                      if (matchedApplicant?.paid) schoolMap[visit.school_name].paid++
-                    }
-                  }
-                })
-                const rows = Object.values(schoolMap).sort((a, b) => b.visited - a.visited)
-                if (rows.length === 0) return (
-                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: '30px', fontSize: '13px', color: 'rgba(255,255,255,0.2)' }}>No school visit data yet</td></tr>
-                )
-                return rows.map((row) => (
-                  <tr key={row.name}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#ffffff', fontWeight: '500', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.name}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.visited}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{row.applied}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>{row.paid}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px' }}>
-                          <div style={{ height: '100%', borderRadius: '3px', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)', width: row.visited > 0 ? Math.round((row.applied / row.visited) * 100) + '%' : '0%' }} />
-                        </div>
-                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', minWidth: '35px' }}>
-                          {row.visited > 0 ? Math.round((row.applied / row.visited) * 100) + '%' : '0%'}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              })()}
-            </tbody>
-          </table>
-        </div>
-      </div>
+
     </div>
-    
   )
 }

@@ -168,11 +168,12 @@ export default function SchoolVisitsPage() {
       alert('Please write what you accomplished during this visit')
       return
     }
-    const { error } = await supabase.from('visit_completions').insert([{
+    // Using upsert with onConflict ensures only ONE completion exists per visit
+    const { error } = await supabase.from('visit_completions').upsert({
       visit_id: completingVisit.id,
       comment: completionComment,
       images: completionImages,
-    }])
+    }, { onConflict: 'visit_id' })
     if (!error) {
       await logActivity('Completed school visit', 'school_visit', completingVisit?.school_name, completionComment)
       setShowCompleteModal(false)
@@ -196,9 +197,11 @@ const handleUndoComplete = async (visitId) => {
 
   const generateWord = async (visit = null) => {
     alert('Generating Word Document...');
-    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType } = await import('docx');
+const { 
+      Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
+      WidthType, HeadingLevel, AlignmentType, ImageRun 
+    } = await import('docx');
     const { saveAs } = await import('file-saver');
-
     const isAll = !visit;
     const sections = [];
 
@@ -398,16 +401,16 @@ const handleUndoComplete = async (visitId) => {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['School Name', 'Type', 'City', 'Date', 'Time', 'Status','Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}
-            </tr>
+{['School Name', 'Type', 'School Type', 'City', 'Date', 'Time', 'Status','Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}            </tr>
           </thead>
           <tbody>
             {loading ? <tr><td colSpan={9} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>Loading...</td></tr> : 
              pendingVisits.length === 0 ? <tr><td colSpan={9} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No pending visits</td></tr> : 
              pendingVisits.map((visit) => (
                 <tr key={visit.id} style={{ transition: 'background 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                  <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{visit.school_name}</td>
+                 <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{visit.school_name}</td>
                   <td style={s.td}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{visit.type}</span></td>
+                  <td style={s.td}><span style={{ textTransform: 'capitalize' }}>{visit.private_or_public || '-'}</span></td>
                   <td style={s.td}>{visit.city || '-'}</td>
                   <td style={s.td}>{visit.visit_date}</td>
                   <td style={s.td}>{visit.visit_time || '-'}</td>
@@ -443,8 +446,7 @@ const handleUndoComplete = async (visitId) => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['School Name', 'Type', 'Date', 'Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}
-              </tr>
+{['School Name', 'Type', 'School Type', 'Date', 'Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}              </tr>
             </thead>
             <tbody>
               {completedVisits.length === 0 ? <tr><td colSpan={5} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No completed visits yet</td></tr> : 
@@ -452,6 +454,7 @@ const handleUndoComplete = async (visitId) => {
                   <tr key={visit.id} style={{ background: 'rgba(16,185,129,0.02)' }}>
                     <td style={{ ...s.td, color: '#ffffff', fontWeight: '500', textDecoration: 'line-through', opacity: 0.7 }}>{visit.school_name}</td>
                     <td style={s.td}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{visit.type}</span></td>
+                    <td style={s.td}><span style={{ textTransform: 'capitalize' }}>{visit.private_or_public || '-'}</span></td>
                     <td style={s.td}>{visit.visit_date}</td>
                     <td style={s.td}>
                       <div>
@@ -503,6 +506,13 @@ const handleUndoComplete = async (visitId) => {
                   <option value="Outreach fairs">Outreach fairs</option>
                   <option value="Outreach School Tours">Outreach School Tours</option>
                   <option value="Outreach Events">Outreach Events</option>
+                </select>
+              </div>
+              <div>
+                <label style={s.label}>School Type *</label>
+                <select value={form.private_or_public} onChange={(e) => setForm({ ...form, private_or_public: e.target.value })} style={s.input}>
+                  <option value="private">Private</option>
+                  <option value="public">Public</option>
                 </select>
               </div>
               <div>

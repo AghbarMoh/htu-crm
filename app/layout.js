@@ -14,7 +14,9 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "HTU CRM",
   description: "Admission and School Visit Management System",
+  
 };
+
 
 export default function RootLayout({ children }) {
   return (
