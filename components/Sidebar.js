@@ -79,7 +79,7 @@ export default function Sidebar() {
           </div>
           <div>
             <p style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#ffffff', letterSpacing: '-0.3px' }}>HTU CRM</p>
-            <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>Outreach Office</p>
+            <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>Students Recruitment & Outreach Office</p>
           </div>
         </div>
       </div>
