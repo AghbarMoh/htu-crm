@@ -199,12 +199,21 @@ const handleUndoComplete = async (visitId) => {
 
   const generateWord = async (visit = null) => {
   const {
-    Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-    WidthType, HeadingLevel, AlignmentType, BorderStyle, ShadingType,
-  } = await import('docx')
+  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+  WidthType, HeadingLevel, AlignmentType, BorderStyle, ShadingType, ImageRun,
+} = await import('docx')
   const { saveAs } = await import('file-saver')
 
   const isAll = !visit
+  const fetchImageBuffer = async (url) => {
+  try {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    return await blob.arrayBuffer()
+  } catch {
+    return null
+  }
+}
 
   const RED = 'C0392B'
   const WHITE = 'FFFFFF'
@@ -378,13 +387,35 @@ const handleUndoComplete = async (visitId) => {
 
     sections.push(divider())
     sections.push(redHeading('What Was Accomplished'))
-    sections.push(new Paragraph({
-      spacing: { after: 200 },
-      children: [new TextRun({
-        text: completions[visit.id]?.comment || 'Not marked as done yet.',
-        size: 20, color: DARK_GRAY, font: 'Calibri',
-      })],
-    }))
+sections.push(new Paragraph({
+  spacing: { after: 200 },
+  children: [new TextRun({
+    text: completions[visit.id]?.comment || 'Not marked as done yet.',
+    size: 20, color: DARK_GRAY, font: 'Calibri',
+  })],
+}))
+
+const completionImages = completions[visit.id]?.images || []
+if (completionImages.length > 0) {
+  sections.push(new Paragraph({
+    spacing: { after: 80 },
+    children: [new TextRun({ text: 'Photos:', bold: true, size: 20, color: DARK_GRAY, font: 'Calibri' })],
+  }))
+  for (const imgUrl of completionImages) {
+    const buffer = await fetchImageBuffer(imgUrl)
+    if (buffer) {
+      sections.push(new Paragraph({
+        spacing: { after: 120 },
+        children: [
+          new ImageRun({
+            data: buffer,
+            transformation: { width: 400, height: 300 },
+          }),
+        ],
+      }))
+    }
+  }
+}
 
     const students = visitStudents.filter(vs => vs.visit_id === visit.id)
     sections.push(divider())
@@ -411,6 +442,31 @@ const handleUndoComplete = async (visitId) => {
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [studentHeaderRow, ...studentRows],
       }))
+      const visitsWithPhotos = visits.filter(v => completions[v.id]?.images?.length > 0)
+if (visitsWithPhotos.length > 0) {
+  sections.push(divider())
+  sections.push(redHeading('Photo Appendix'))
+  for (const v of visitsWithPhotos) {
+    sections.push(new Paragraph({
+      spacing: { before: 200, after: 80 },
+      children: [new TextRun({ text: v.school_name, bold: true, size: 22, color: DARK_GRAY, font: 'Calibri' })],
+    }))
+    for (const imgUrl of completions[v.id].images) {
+      const buffer = await fetchImageBuffer(imgUrl)
+      if (buffer) {
+        sections.push(new Paragraph({
+          spacing: { after: 120 },
+          children: [
+            new ImageRun({
+              data: buffer,
+              transformation: { width: 400, height: 300 },
+            }),
+          ],
+        }))
+      }
+    }
+  }
+}
     } else {
       sections.push(new Paragraph({
         children: [new TextRun({ text: 'No students were collected during this visit.', size: 20, color: MID_GRAY, font: 'Calibri', italics: true })],
@@ -425,7 +481,7 @@ const handleUndoComplete = async (visitId) => {
     new Paragraph({
       alignment: AlignmentType.CENTER,
       children: [new TextRun({
-        text: 'HTU Student Recruitment & Outreach Office  |  Prepared for Dalia Zawaideh',
+        text: 'HTU Students Recruitment & Outreach Office  |  Prepared for Dalia Zawaideh',
         size: 16, color: MID_GRAY, font: 'Calibri', italics: true,
       })],
     }),
