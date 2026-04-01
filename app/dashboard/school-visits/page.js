@@ -399,7 +399,7 @@ const completionImages = completions[visit.id]?.images || []
 if (completionImages.length > 0) {
   sections.push(new Paragraph({
     spacing: { after: 80 },
-    children: [new TextRun({ text: 'Photos:', bold: true, size: 20, color: DARK_GRAY, font: 'Calibri' })],
+    children: [new TextRun({ text: 'Photos:', bold: true, size: 20, color: RED, font: 'Calibri' })],
   }))
   for (const imgUrl of completionImages) {
     const buffer = await fetchImageBuffer(imgUrl)
