@@ -255,7 +255,7 @@ const handleUndoComplete = async (visitId) => {
       alignment: AlignmentType.CENTER,
       spacing: { before: 0, after: 60 },
       shading: { type: ShadingType.SOLID, color: RED, fill: RED },
-      children: [new TextRun({ text: '  HTU Outreach CRM  ', bold: true, size: 40, color: WHITE, font: 'Calibri' })],
+      children: [new TextRun({ text: '  HTU CRM  ', bold: true, size: 40, color: WHITE, font: 'Calibri' })],
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
