@@ -1,289 +1,261 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
-import { School, Users, ClipboardList, BookUser, CalendarCheck, CheckCircle, Circle, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  School, Users, ClipboardList, BookUser, CheckCircle,
+  ChevronLeft, ChevronRight, Send, Bot,
+} from 'lucide-react'
 import Link from 'next/link'
 
+function useCountUp(target, duration = 800) {
+  const [val, setVal] = useState(0)
+  useEffect(() => {
+    if (!target) return
+    let start = null
+    const step = (ts) => {
+      if (!start) start = ts
+      const pct = Math.min((ts - start) / duration, 1)
+      setVal(Math.floor(pct * target))
+      if (pct < 1) requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  }, [target])
+  return val
+}
+
+function StatCard({ label, value, icon: Icon, accent, href }) {
+  const count = useCountUp(value)
+  const [hovered, setHovered] = useState(false)
+  return (
+    <Link href={href} style={{ textDecoration: 'none' }}>
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          background: hovered ? 'rgba(255,255,255,0.055)' : 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderLeft: `3px solid ${accent}`,
+          borderRadius: '14px',
+          padding: '18px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+          transition: 'all 0.18s ease',
+        }}
+      >
+        <div>
+          <p style={{
+            fontSize: '30px', fontWeight: '700', margin: '0 0 5px 0',
+            background: `linear-gradient(135deg, #ffffff 40%, ${accent})`,
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            letterSpacing: '-1px',
+          }}>{count}</p>
+          <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.38)', margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</p>
+        </div>
+        <div style={{
+          width: '42px', height: '42px', borderRadius: '12px',
+          background: accent + '18',
+          border: `1px solid ${accent}28`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'background 0.18s',
+        }}>
+          <Icon size={18} style={{ color: accent }} />
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+const QUICK = [
+  { label: '➕ Add Visit', text: 'Add a visit: [School Name], Type: [Type], School Type: [School Type], City: [City], Date: [Date], Time: [Time], Status: [Status], Companion: [Companion].' },
+  { label: '👤 Add Contact', text: 'Add contact: [Full Name], Role: [Role], School: [School], Email: [Email], Phone: [Phone], Notes: [Notes].' },
+  { label: '✏️ Edit Visit', text: 'Change the time for my visit to [School Name] to [New Time].' },
+  { label: '🗑️ Delete Visit', text: 'Cancel my visit to [School Name].' },
+  { label: '📅 Check Date', text: 'What visits do I have scheduled for [Date], and did I complete any?' },
+]
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState({
-    totalApplicants: 0,
-    paidApplicants: 0,
-    totalVisits: 0,
-    totalContacts: 0,
-    totalVisitStudents: 0,
-    matchedApplicants: 0,
-  })
-  const [todayTasks, setTodayTasks] = useState([])
-  const [pendingTasks, setPendingTasks] = useState([])
+  const [stats, setStats] = useState({ totalApplicants: 0, totalVisits: 0, totalContacts: 0, totalVisitStudents: 0, matchedApplicants: 0 })
   const [allVisits, setAllVisits] = useState([])
   const [completions, setCompletions] = useState({})
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
   const [calendarDate, setCalendarDate] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState(null)
+  const [chatMessages, setChatMessages] = useState([{
+    role: 'assistant',
+    text: "Hi! I'm your CRM Assistant. I can help you manage <b>school visits</b>, <b>contacts</b>, and answer questions about your schedule. I speak both <b>English & Arabic</b> — what do you need?",
+  }])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const messagesEndRef = useRef(null)
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchAll()
-    fetchUser()
-  }, [])
+  useEffect(() => { fetchAll(); fetchUser() }, [])
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages])
 
   const fetchUser = async () => {
     const { data: sessionData } = await supabase.auth.getSession()
-    const sessionUser = sessionData?.session?.user
-    if (sessionUser) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', sessionUser.id)
-        .single()
+    const u = sessionData?.session?.user
+    if (u) {
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', u.id).single()
       setUser(profile)
     }
   }
 
   const fetchAll = async () => {
     setLoading(true)
-    const today = new Date().toISOString().split('T')[0]
-
-    const [a, v, vs, c, tasks, visits, comps] = await Promise.all([
+    const [a, v, vs, c, visits, comps] = await Promise.all([
       supabase.from('applicants').select('id, paid, is_matched').eq('is_archived', false),
       supabase.from('visit_completions').select('id'),
       supabase.from('visit_students').select('id'),
       supabase.from('contacts').select('id'),
-      supabase.from('tasks').select('*').eq('is_done', false).order('due_date'),
       supabase.from('school_visits').select('*').order('visit_date', { ascending: true }),
       supabase.from('visit_completions').select('*'),
     ])
-
     if (!a.error) {
       setStats({
         totalApplicants: a.data.length,
-        paidApplicants: a.data.filter(x => x.paid).length,
         totalVisits: v.data?.length || 0,
         totalContacts: c.data?.length || 0,
         totalVisitStudents: vs.data?.length || 0,
         matchedApplicants: a.data.filter(x => x.is_matched).length,
       })
     }
-
-    if (!tasks.error) {
-      const todayList = tasks.data.filter(t => t.due_date === today)
-      const pendingList = tasks.data.filter(t => t.due_date !== today).slice(0, 5)
-      setTodayTasks(todayList)
-      setPendingTasks(pendingList)
-    }
-
     if (!visits.error) setAllVisits(visits.data)
-
     if (!comps.error) {
       const map = {}
       comps.data.forEach(c => { map[c.visit_id] = c })
       setCompletions(map)
     }
-
     setLoading(false)
   }
 
-  const handleCompleteTask = async (id) => {
-    await supabase.from('tasks').update({ is_done: true }).eq('id', id)
-    fetchAll()
+  const sendChat = async (e) => {
+    e.preventDefault()
+    if (!chatInput.trim() || chatLoading) return
+    const userMsg = chatInput.trim()
+    const updated = [...chatMessages, { role: 'user', text: userMsg }]
+    setChatMessages(updated)
+    setChatInput('')
+    setChatLoading(true)
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: updated }),
+      })
+      const data = await res.json()
+      setChatMessages(prev => [...prev, { role: 'assistant', text: data.reply || "Sorry, I ran into an issue." }])
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'assistant', text: "Connection dropped. Try again!" }])
+    } finally {
+      setChatLoading(false)
+    }
   }
 
-  const isOverdue = (date) => date && new Date(date) < new Date()
-
-  // ── Calendar helpers ────────────────────────────────────────────
+  // Calendar helpers
   const year = calendarDate.getFullYear()
   const month = calendarDate.getMonth()
-
   const firstDayOfMonth = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-
-  const prevMonth = () => {
-    setCalendarDate(new Date(year, month - 1, 1))
-    setSelectedDay(null)
-  }
-  const nextMonth = () => {
-    setCalendarDate(new Date(year, month + 1, 1))
-    setSelectedDay(null)
-  }
-
   const monthName = calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const todayStr = new Date().toISOString().split('T')[0]
 
   const visitsOnDay = (day) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     return allVisits.filter(v => v.visit_date === dateStr)
   }
-
-  const selectedVisits = selectedDay ? visitsOnDay(selectedDay) : []
-
-  const todayStr = new Date().toISOString().split('T')[0]
   const isToday = (day) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     return dateStr === todayStr
   }
 
-  // ── Styles ──────────────────────────────────────────────────────
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '64px' }}>
-        <p style={{ color: 'rgba(255,255,255,0.3)' }}>Loading dashboard...</p>
+        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>Loading dashboard...</p>
       </div>
     )
   }
 
-  const cardStyle = {
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.07)',
-    borderRadius: '16px',
-    padding: '20px',
-  }
-
-  const statCards = [
-    { label: 'Total Applicants', value: stats.totalApplicants, icon: ClipboardList, color: '#3b82f6', href: '/dashboard/applicants' },
-    { label: 'Completed Visits', value: stats.totalVisits, icon: School, color: '#8b5cf6', href: '/dashboard/school-visits' },
-    { label: 'Visit Students', value: stats.totalVisitStudents, icon: Users, color: '#f59e0b', href: '/dashboard/visit-students' },
-    { label: 'Matched', value: stats.matchedApplicants, icon: CheckCircle, color: '#06b6d4', href: '/dashboard/applicants' },
-    { label: 'Contacts', value: stats.totalContacts, icon: BookUser, color: '#ec4899', href: '/dashboard/contacts' },
+  const STATS = [
+    { label: 'Total Applicants', value: stats.totalApplicants, icon: ClipboardList, accent: '#3b82f6', href: '/dashboard/applicants' },
+    { label: 'Completed Visits', value: stats.totalVisits, icon: School, accent: '#8b5cf6', href: '/dashboard/school-visits' },
+    { label: 'Visit Students', value: stats.totalVisitStudents, icon: Users, accent: '#f59e0b', href: '/dashboard/visit-students' },
+    { label: 'Matched', value: stats.matchedApplicants, icon: CheckCircle, accent: '#10b981', href: '/dashboard/applicants' },
+    { label: 'Contacts', value: stats.totalContacts, icon: BookUser, accent: '#ec4899', href: '/dashboard/contacts' },
   ]
 
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const selectedVisits = selectedDay ? visitsOnDay(selectedDay) : []
+
+  const card = {
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '16px',
+    padding: '22px',
+  }
 
   return (
-    <div>
-      {/* Welcome */}
-      <div style={{ marginBottom: '28px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* ── Header ── */}
+      <div>
         <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>
           Good morning, {user?.full_name?.split(' ')[0] || 'Dalia'} 👋
         </h1>
-        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>
+        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '24px' }}>
-        {statCards.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <Link key={stat.label} href={stat.href} style={{ textDecoration: 'none' }}>
-              <div style={{
-                ...cardStyle,
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'}
-              >
-                <div>
-                  <p style={{ fontSize: '28px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0' }}>{stat.value}</p>
-                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>{stat.label}</p>
-                </div>
-                <div style={{
-                  width: '40px', height: '40px', borderRadius: '12px',
-                  background: stat.color + '20',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Icon size={18} style={{ color: stat.color }} />
-                </div>
-              </div>
-            </Link>
-          )
-        })}
+      {/* ── Stat Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
+        {STATS.map(s => <StatCard key={s.label} {...s} />)}
       </div>
 
-      {/* Bottom Grid */}
+      {/* ── Bottom Grid: Calendar + Chat ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' }}>
 
-        {/* Today's Tasks */}
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', margin: 0 }}>Today's Tasks</h2>
-            <Link href="/dashboard/tasks" style={{ fontSize: '12px', color: '#3b82f6', textDecoration: 'none' }}>View all</Link>
-          </div>
-          {todayTasks.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: '20px 0' }}>No tasks for today</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {todayTasks.map(task => (
-                <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)' }}>
-                  <button onClick={() => handleCompleteTask(task.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'rgba(255,255,255,0.25)', display: 'flex' }}>
-                    <Circle size={16} />
-                  </button>
-                  <div>
-                    <p style={{ fontSize: '13px', color: '#ffffff', margin: '0 0 2px 0' }}>{task.title}</p>
-                    {task.description && <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>{task.description}</p>}
-                  </div>
-                </div>
-              ))}
+        {/* ── Visit Calendar ── */}
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#8b5cf6' }} />
+              <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', margin: 0 }}>Visit Calendar</h2>
             </div>
-          )}
-          {pendingTasks.length > 0 && (
-            <div style={{ marginTop: '16px' }}>
-              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', marginBottom: '8px' }}>Upcoming</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {pendingTasks.map(task => (
-                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px', borderRadius: '8px' }}>
-                    <Circle size={14} style={{ color: isOverdue(task.due_date) ? '#ef4444' : 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
-                    <div>
-                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', margin: '0 0 1px 0' }}>{task.title}</p>
-                      <p style={{ fontSize: '11px', color: isOverdue(task.due_date) ? '#ef4444' : 'rgba(255,255,255,0.25)', margin: 0 }}>
-                        {isOverdue(task.due_date) ? 'Overdue: ' : 'Due: '}{task.due_date}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Calendar */}
-        <div style={cardStyle}>
-          {/* Calendar Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', margin: 0 }}>Visit Calendar</h2>
-            <Link href="/dashboard/school-visits" style={{ fontSize: '12px', color: '#8b5cf6', textDecoration: 'none' }}>View all</Link>
+            <Link href="/dashboard/school-visits" style={{ fontSize: '12px', color: '#8b5cf6', textDecoration: 'none', opacity: 0.8 }}>View all →</Link>
           </div>
 
-          {/* Month navigation */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <button onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', display: 'flex', padding: '4px' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
-            >
-              <ChevronLeft size={16} />
-            </button>
+          {/* Month nav */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <button onClick={() => { setCalendarDate(new Date(year, month - 1, 1)); setSelectedDay(null) }}
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', display: 'flex', padding: '5px 7px', transition: 'all 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
+            ><ChevronLeft size={14} /></button>
             <span style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff' }}>{monthName}</span>
-            <button onClick={nextMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', display: 'flex', padding: '4px' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
-            >
-              <ChevronRight size={16} />
-            </button>
+            <button onClick={() => { setCalendarDate(new Date(year, month + 1, 1)); setSelectedDay(null) }}
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', display: 'flex', padding: '5px 7px', transition: 'all 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
+            ><ChevronRight size={14} /></button>
           </div>
 
           {/* Day labels */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '6px' }}>
-            {days.map(d => (
-              <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: 'rgba(255,255,255,0.25)', padding: '4px 0', textTransform: 'uppercase' }}>
-                {d}
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '4px' }}>
+            {DAYS.map(d => (
+              <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '600', color: 'rgba(255,255,255,0.2)', padding: '4px 0', letterSpacing: '0.05em' }}>{d}</div>
             ))}
           </div>
 
-          {/* Calendar grid */}
+          {/* Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
-            {/* Empty cells before first day */}
-            {Array.from({ length: firstDayOfMonth }).map((_, i) => (
-              <div key={'empty-' + i} />
-            ))}
-
-            {/* Day cells */}
+            {Array.from({ length: firstDayOfMonth }).map((_, i) => <div key={'e' + i} />)}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1
               const dayVisits = visitsOnDay(day)
@@ -292,51 +264,22 @@ export default function DashboardPage() {
               const someDone = hasVisit && dayVisits.some(v => completions[v.id]) && !allDone
               const isSelected = selectedDay === day
               const today = isToday(day)
-
               return (
-                <div
-                  key={day}
-                  onClick={() => hasVisit ? setSelectedDay(isSelected ? null : day) : null}
+                <div key={day}
+                  onClick={() => hasVisit && setSelectedDay(isSelected ? null : day)}
                   style={{
-                    position: 'relative',
-                    textAlign: 'center',
-                    padding: '6px 2px',
-                    borderRadius: '8px',
+                    textAlign: 'center', padding: '6px 2px', borderRadius: '8px',
                     cursor: hasVisit ? 'pointer' : 'default',
-                    background: isSelected
-                      ? 'rgba(139,92,246,0.25)'
-                      : today
-                      ? 'rgba(59,130,246,0.15)'
-                      : 'transparent',
-                    border: isSelected
-                      ? '1px solid rgba(139,92,246,0.5)'
-                      : today
-                      ? '1px solid rgba(59,130,246,0.4)'
-                      : '1px solid transparent',
-                    transition: 'all 0.1s',
+                    background: isSelected ? 'rgba(139,92,246,0.22)' : today ? 'rgba(59,130,246,0.12)' : 'transparent',
+                    border: isSelected ? '1px solid rgba(139,92,246,0.45)' : today ? '1px solid rgba(59,130,246,0.35)' : '1px solid transparent',
+                    transition: 'all 0.12s',
                   }}
-                  onMouseEnter={(e) => {
-                    if (hasVisit && !isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (hasVisit && !isSelected) e.currentTarget.style.background = 'transparent'
-                  }}
+                  onMouseEnter={e => { if (hasVisit && !isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                  onMouseLeave={e => { if (hasVisit && !isSelected) e.currentTarget.style.background = 'transparent' }}
                 >
-                  <span style={{
-                    fontSize: '12px',
-                    fontWeight: today ? '700' : '400',
-                    color: today ? '#60a5fa' : isSelected ? '#a78bfa' : 'rgba(255,255,255,0.7)',
-                  }}>
-                    {day}
-                  </span>
-
-                  {/* Visit dot indicator */}
+                  <span style={{ fontSize: '12px', fontWeight: today ? '700' : '400', color: today ? '#60a5fa' : isSelected ? '#a78bfa' : 'rgba(255,255,255,0.65)' }}>{day}</span>
                   {hasVisit && (
-                    <div style={{
-                      width: '5px', height: '5px', borderRadius: '50%',
-                      background: allDone ? '#10b981' : someDone ? '#f59e0b' : '#8b5cf6',
-                      margin: '2px auto 0',
-                    }} />
+                    <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: allDone ? '#10b981' : someDone ? '#f59e0b' : '#8b5cf6', margin: '2px auto 0' }} />
                   )}
                 </div>
               )
@@ -344,55 +287,158 @@ export default function DashboardPage() {
           </div>
 
           {/* Legend */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            {[
-              { color: '#8b5cf6', label: 'Pending' },
-              { color: '#f59e0b', label: 'Partial' },
-              { color: '#10b981', label: 'Done' },
-            ].map(item => (
-              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.color }} />
-                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>{item.label}</span>
+          <div style={{ display: 'flex', gap: '14px', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            {[{ c: '#8b5cf6', l: 'Pending' }, { c: '#f59e0b', l: 'Partial' }, { c: '#10b981', l: 'Done' }].map(x => (
+              <div key={x.l} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: x.c }} />
+                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', letterSpacing: '0.04em' }}>{x.l}</span>
               </div>
             ))}
           </div>
 
-          {/* Selected day visits */}
+          {/* Selected day */}
           {selectedDay && selectedVisits.length > 0 && (
-            <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginBottom: '8px', margin: '0 0 8px 0' }}>
+            <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', marginBottom: '8px', letterSpacing: '0.04em' }}>
                 {selectedDay} {calendarDate.toLocaleDateString('en-US', { month: 'long' })} — {selectedVisits.length} visit{selectedVisits.length > 1 ? 's' : ''}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {selectedVisits.map(visit => (
-                  <div key={visit.id} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '8px 10px', borderRadius: '8px',
-                    background: completions[visit.id] ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.08)',
-                    border: '1px solid ' + (completions[visit.id] ? 'rgba(16,185,129,0.2)' : 'rgba(139,92,246,0.2)'),
-                  }}>
-                    <div>
-                      <p style={{ fontSize: '12px', fontWeight: '600', color: '#ffffff', margin: '0 0 2px 0' }}>{visit.school_name}</p>
-                      <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>
-                        {visit.visit_time ? visit.visit_time + ' • ' : ''}{visit.type}
-                        {visit.companion ? ' • ' + visit.companion : ''}
-                      </p>
-                    </div>
-                    <span style={{
-                      fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px',
-                      background: completions[visit.id] ? 'rgba(16,185,129,0.2)' : 'rgba(139,92,246,0.2)',
-                      color: completions[visit.id] ? '#10b981' : '#a78bfa',
+                {selectedVisits.map(visit => {
+                  const done = completions[visit.id]
+                  return (
+                    <div key={visit.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '9px 12px', borderRadius: '10px',
+                      background: done ? 'rgba(16,185,129,0.07)' : 'rgba(139,92,246,0.07)',
+                      border: `1px solid ${done ? 'rgba(16,185,129,0.18)' : 'rgba(139,92,246,0.18)'}`,
                     }}>
-                      {completions[visit.id] ? '✓ Done' : 'Pending'}
-                    </span>
-                  </div>
-                ))}
+                      <div>
+                        <p style={{ fontSize: '12px', fontWeight: '600', color: '#ffffff', margin: '0 0 2px 0' }}>{visit.school_name}</p>
+                        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
+                          {visit.visit_time ? visit.visit_time + ' · ' : ''}{visit.type}{visit.companion ? ' · ' + visit.companion : ''}
+                        </p>
+                      </div>
+                      <span style={{
+                        fontSize: '10px', fontWeight: '600', padding: '3px 9px', borderRadius: '20px',
+                        background: done ? 'rgba(16,185,129,0.18)' : 'rgba(139,92,246,0.18)',
+                        color: done ? '#34d399' : '#a78bfa',
+                      }}>{done ? '✓ Done' : 'Pending'}</span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
         </div>
 
+        {/* ── DaliaBot Chat Panel ── */}
+        <div style={{ ...card, display: 'flex', flexDirection: 'column', height: '520px' }}>
+
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+              <div style={{ width: '30px', height: '30px', borderRadius: '10px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Bot size={15} color="#fff" />
+              </div>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff', margin: 0 }}>CRM Assistant</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '1px' }}>
+                  <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981' }} />
+                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>Online</span>
+                </div>
+              </div>
+            </div>
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.07)' }}>by Aghbar</span>
+          </div>
+
+          {/* Messages */}
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px', paddingRight: '2px' }}>
+            {chatMessages.map((msg, i) => {
+              const isUser = msg.role === 'user'
+              return (
+                <div key={i} style={{
+                  maxWidth: '86%',
+                  alignSelf: isUser ? 'flex-end' : 'flex-start',
+                  background: isUser ? 'rgba(59,130,246,0.22)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${isUser ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.07)'}`,
+                  borderRadius: '14px',
+                  borderBottomRightRadius: isUser ? '4px' : '14px',
+                  borderBottomLeftRadius: isUser ? '14px' : '4px',
+                  padding: '10px 13px',
+                  fontSize: '13px', lineHeight: '1.55', color: '#ffffff',
+                  wordBreak: 'break-word', whiteSpace: 'pre-wrap',
+                }}>
+                  <span dangerouslySetInnerHTML={{ __html: msg.text }} />
+                </div>
+              )
+            })}
+            {chatLoading && (
+              <div style={{
+                alignSelf: 'flex-start', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.07)', borderRadius: '14px', borderBottomLeftRadius: '4px',
+                padding: '10px 14px', display: 'flex', gap: '4px', alignItems: 'center',
+              }}>
+                {[0, 1, 2].map(n => (
+                  <div key={n} style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'rgba(255,255,255,0.35)', animation: `bounce 1.2s ${n * 0.2}s infinite` }} />
+                ))}
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Quick templates */}
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '10px', paddingBottom: '2px', scrollbarWidth: 'none', flexShrink: 0 }}>
+            {QUICK.map((q, i) => (
+              <button key={i} onClick={() => setChatInput(q.text)}
+                style={{ whiteSpace: 'nowrap', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)', color: '#93c5fd', padding: '5px 11px', borderRadius: '20px', fontSize: '11px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0 }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.22)'; e.currentTarget.style.color = '#fff' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.1)'; e.currentTarget.style.color = '#93c5fd' }}
+              >{q.label}</button>
+            ))}
+          </div>
+
+          {/* Input */}
+          <form onSubmit={sendChat} style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexShrink: 0 }}>
+            <textarea
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(e) } }}
+              placeholder="Ask about your schedule…"
+              disabled={chatLoading}
+              rows={2}
+              style={{
+                flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '12px', padding: '10px 13px', fontSize: '13px', color: '#fff',
+                outline: 'none', resize: 'none', fontFamily: 'inherit', lineHeight: '1.5',
+                transition: 'border-color 0.15s',
+              }}
+              onFocus={e => e.target.style.borderColor = 'rgba(99,102,241,0.5)'}
+              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+            />
+            <button type="submit" disabled={chatLoading || !chatInput.trim()}
+              style={{
+                width: '40px', height: '40px', borderRadius: '12px', border: 'none',
+                background: chatInput.trim() ? 'linear-gradient(135deg, #3b82f6, #6366f1)' : 'rgba(255,255,255,0.07)',
+                color: chatInput.trim() ? '#fff' : 'rgba(255,255,255,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: chatInput.trim() ? 'pointer' : 'default',
+                transition: 'all 0.18s', flexShrink: 0,
+              }}
+            ><Send size={15} /></button>
+          </form>
+        </div>
+
       </div>
+
+      <style>{`
+        @keyframes bounce {
+          0%, 60%, 100% { transform: translateY(0) }
+          30% { transform: translateY(-5px) }
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+      `}</style>
     </div>
   )
 }
