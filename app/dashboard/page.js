@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { School, Users, ClipboardList, BookUser, CalendarCheck, CheckCircle, Circle, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 
+
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalApplicants: 0,

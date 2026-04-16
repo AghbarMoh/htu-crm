@@ -1,9 +1,10 @@
 'use client'
-import { FileText } from 'lucide-react'
 import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
-import { Plus, Pencil, Trash2, CheckCircle, Filter, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react' // <-- NEW IMPORT
+import { Plus, Pencil, Trash2, CheckCircle, Filter, ChevronDown, ChevronUp, RotateCcw, FileText, QrCode } from 'lucide-react' // <-- Added QrCode
+
 
 export default function SchoolVisitsPage() {
   const [visits, setVisits] = useState([])
@@ -18,9 +19,14 @@ export default function SchoolVisitsPage() {
   const [uploadingImages, setUploadingImages] = useState(false)
   const [completions, setCompletions] = useState({})
   const [isCompletedCollapsed, setIsCompletedCollapsed] = useState(false)
+  
+  // NEW QR STATE
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [qrVisit, setQrVisit] = useState(null)
+  
   const supabase = createClient()
 
- const emptyForm = {
+  const emptyForm = {
     school_name: '',
     type: 'School Tours',
     city: '',
@@ -36,13 +42,13 @@ export default function SchoolVisitsPage() {
 
   const [form, setForm] = useState(emptyForm)
 
- const fetchVisits = async () => {
+  const fetchVisits = async () => {
     setLoading(true)
     const { data, error } = await supabase
       .from('school_visits')
       .select('*')
-      .order('visit_date', { ascending: true }) // Earliest dates first
-      .order('visit_time', { ascending: true }) // If same date, sort by earliest time
+      .order('visit_date', { ascending: true })
+      .order('visit_time', { ascending: true })
     if (!error) setVisits(data)
     setLoading(false)
   }
@@ -81,9 +87,7 @@ export default function SchoolVisitsPage() {
       await logActivity('Created school visit', 'school_visit', payload.school_name, 'New visit added')
     }
     
-    // --- Trigger Background Schedule API ---
     try {
-      // ONLY call the API if a reminder is selected
       if (form.reminder_time !== 'none') {
         const res = await fetch('/api/schedule-reminder', {
           method: 'POST',
@@ -97,23 +101,20 @@ export default function SchoolVisitsPage() {
             old_message_id: savedVisit.qstash_message_id
           })
         });
-        
         const scheduleData = await res.json();
-        
-        if (scheduleData.error) {
-          alert(scheduleData.error);
-        }
-        
+        if (scheduleData.error) alert(scheduleData.error);
         if (scheduleData.messageId) {
           await supabase.from('school_visits').update({ qstash_message_id: scheduleData.messageId }).eq('id', savedVisit.id);
         }
-      }} catch (err) {
+      }
+    } catch (err) {
       console.error("Failed to schedule reminder:", err);
     }
 
     fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm)
   }
- const handleEdit = (visit) => {
+
+  const handleEdit = (visit) => {
     setEditingVisit(visit)
     setForm({
       school_name: visit.school_name,
@@ -166,11 +167,8 @@ export default function SchoolVisitsPage() {
   }
 
   const handleCompleteSubmit = async () => {
-    if (!completionComment) {
-      alert('Please write what you accomplished during this visit')
-      return
-    }
-    // Using upsert with onConflict ensures only ONE completion exists per visit
+    if (!completionComment) return alert('Please write what you accomplished during this visit')
+    
     const { error } = await supabase.from('visit_completions').upsert({
       visit_id: completingVisit.id,
       comment: completionComment,
@@ -186,326 +184,134 @@ export default function SchoolVisitsPage() {
     }
   }
 
-const handleUndoComplete = async (visitId) => {
+  const handleUndoComplete = async (visitId) => {
     if (!confirm('Are you sure you want to undo this completion?')) return
     const { error } = await supabase.from('visit_completions').delete().eq('visit_id', visitId)
     if (!error) {
       await logActivity('Undid visit completion', 'school_visit', visits.find(v=>v.id===visitId)?.school_name, 'Moved back to pending')
       fetchCompletions()
-    } else {
-      alert('Error undoing: ' + error.message)
+    } else alert('Error undoing: ' + error.message)
+  }
+
+  const generateWord = async (visit = null, customList = null, title = "All Visits") => {
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, ShadingType, ImageRun } = await import('docx')
+    const { saveAs } = await import('file-saver')
+    const isAll = !visit
+    const listToExport = customList || (isAll ? visits : [visit])
+    
+    const fetchImageBuffer = async (url) => {
+      try { const res = await fetch(url); const blob = await res.blob(); return await blob.arrayBuffer(); } catch { return null; }
     }
-  }
 
-  const generateWord = async (visit = null) => {
-  const {
-  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  WidthType, HeadingLevel, AlignmentType, BorderStyle, ShadingType, ImageRun,
-} = await import('docx')
-  const { saveAs } = await import('file-saver')
+    const RED = 'C0392B'; const WHITE = 'FFFFFF'; const LIGHT_GRAY = 'F5F5F5'; const DARK_GRAY = '2C2C2C'; const MID_GRAY = '666666';
 
-  const isAll = !visit
-  const fetchImageBuffer = async (url) => {
-  try {
-    const res = await fetch(url)
-    const blob = await res.blob()
-    return await blob.arrayBuffer()
-  } catch {
-    return null
-  }
-}
+    const redHeading = (text) => new Paragraph({ spacing: { before: 320, after: 120 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: RED } }, children: [new TextRun({ text, bold: true, size: 26, color: RED, font: 'Calibri' })] })
+    const sectionLabel = (label, value) => new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: label + ': ', bold: true, size: 20, color: DARK_GRAY, font: 'Calibri' }), new TextRun({ text: value || '-', size: 20, color: MID_GRAY, font: 'Calibri' })] })
+    const divider = () => new Paragraph({ spacing: { before: 200, after: 200 }, border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: 'E0E0E0' } }, children: [new TextRun({ text: '' })] })
 
-  const RED = 'C0392B'
-  const WHITE = 'FFFFFF'
-  const LIGHT_GRAY = 'F5F5F5'
-  const DARK_GRAY = '2C2C2C'
-  const MID_GRAY = '666666'
-
-  const redHeading = (text) => new Paragraph({
-    spacing: { before: 320, after: 120 },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: RED } },
-    children: [new TextRun({
-      text,
-      bold: true,
-      size: 26,
-      color: RED,
-      font: 'Calibri',
-    })],
-  })
-
-  const sectionLabel = (label, value) => new Paragraph({
-    spacing: { after: 80 },
-    children: [
-      new TextRun({ text: label + ': ', bold: true, size: 20, color: DARK_GRAY, font: 'Calibri' }),
-      new TextRun({ text: value || '-', size: 20, color: MID_GRAY, font: 'Calibri' }),
-    ],
-  })
-
-  const divider = () => new Paragraph({
-    spacing: { before: 200, after: 200 },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: 'E0E0E0' } },
-    children: [new TextRun({ text: '' })],
-  })
-
-  const sections = []
-
-  // ── COVER HEADER ────────────────────────────────────────────────────
-  sections.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 0, after: 60 },
-      shading: { type: ShadingType.SOLID, color: RED, fill: RED },
-      children: [new TextRun({ text: '  HTU CRM  ', bold: true, size: 40, color: WHITE, font: 'Calibri' })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 40 },
-      shading: { type: ShadingType.SOLID, color: RED, fill: RED },
-      children: [new TextRun({
-        text: isAll ? '  School Visits Report  ' : '  School Visit Report  ',
-        size: 26, color: WHITE, font: 'Calibri',
-      })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 40 },
-      shading: { type: ShadingType.SOLID, color: RED, fill: RED },
-      children: [new TextRun({
-        text: 'Dalia Zawaideh  ',
-        italics: true, size: 22, color: 'FFCCCC', font: 'Calibri',
-      })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 40 },
-      shading: { type: ShadingType.SOLID, color: RED, fill: RED },
-      children: [new TextRun({
-        text: '  Generated: ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + '  ',
-        size: 20, color: 'FFCCCC', font: 'Calibri',
-      })],
-    }),
-    new Paragraph({ spacing: { after: 300 }, children: [new TextRun({ text: '' })] }),
-  )
-
-  if (isAll) {
-    // ── SUMMARY SECTION ────────────────────────────────────────────────
-    sections.push(redHeading('Executive Summary'))
-    sections.push(new Paragraph({
-      spacing: { after: 200 },
-      children: [new TextRun({
-        text: 'This report provides a comprehensive overview of all school visits conducted by the HTU Outreach team.',
-        size: 20, color: MID_GRAY, font: 'Calibri', italics: true,
-      })],
-    }))
-
-    const summaryTable = new Table({
-      width: { size: 50, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              shading: { type: ShadingType.SOLID, color: RED, fill: RED },
-              children: [new Paragraph({ children: [new TextRun({ text: 'Metric', bold: true, color: WHITE, size: 20, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              shading: { type: ShadingType.SOLID, color: RED, fill: RED },
-              children: [new Paragraph({ children: [new TextRun({ text: 'Value', bold: true, color: WHITE, size: 20, font: 'Calibri' })] })],
-            }),
-          ],
-        }),
-        ...[
-          ['Total School Visits', String(visits.length)],
-          ['Completed Visits', String(Object.keys(completions).length)],
-          ['Pending Visits', String(visits.length - Object.keys(completions).length)],
-          ['Total Students Collected', String(visitStudents.length)],
-        ].map(([label, value], i) => new TableRow({
-          children: [
-            new TableCell({
-              shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE },
-              children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 20, font: 'Calibri', color: DARK_GRAY })] })],
-            }),
-            new TableCell({
-              shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE },
-              children: [new Paragraph({ children: [new TextRun({ text: value, size: 20, font: 'Calibri', color: MID_GRAY })] })],
-            }),
-          ],
-        })),
-      ],
-    })
-    sections.push(summaryTable)
-    sections.push(divider())
-
-    // ── ALL VISITS TABLE ───────────────────────────────────────────────
-    sections.push(redHeading('All School Visits'))
-
-    const headerCols = ['School Name', 'Type', 'City', 'Date', 'Time', 'Status', 'Companion', 'Completed', 'Students']
-    const headerRow = new TableRow({
-      children: headerCols.map(text => new TableCell({
-        shading: { type: ShadingType.SOLID, color: RED, fill: RED },
-        children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: WHITE, size: 18, font: 'Calibri' })] })],
-      })),
-    })
-
-    const dataRows = visits.map((v, i) => new TableRow({
-      children: [
-        v.school_name,
-        v.type,
-        v.city || '-',
-        v.visit_date || '-',
-        v.visit_time || '-',
-        v.connection_status || 'New',
-        v.companion || '-',
-        completions[v.id] ? 'Yes' : 'No',
-        String(visitStudents.filter(vs => vs.visit_id === v.id).length),
-      ].map(text => new TableCell({
-        shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE },
-        children: [new Paragraph({ children: [new TextRun({ text: String(text), size: 18, font: 'Calibri', color: DARK_GRAY })] })],
-      })),
-    }))
-
-    sections.push(new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [headerRow, ...dataRows],
-    }))
-
-  } else {
-    // ── SINGLE VISIT ───────────────────────────────────────────────────
-    sections.push(redHeading('Visit Details'))
-
+    const sections = []
     sections.push(
-      sectionLabel('School Name', visit.school_name),
-      sectionLabel('Visit Date', visit.visit_date || '-'),
-      sectionLabel('Visit Time', visit.visit_time || '-'),
-      sectionLabel('Visit Type', visit.type),
-      sectionLabel('School Type', visit.private_or_public || '-'),
-      sectionLabel('City', visit.city || '-'),
-      sectionLabel('Country', visit.country || '-'),
-      sectionLabel('Connection Status', visit.connection_status || 'New'),
-      sectionLabel('Companion', visit.companion || '-'),
-
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 60 }, shading: { type: ShadingType.SOLID, color: RED, fill: RED }, children: [new TextRun({ text: '  HTU CRM  ', bold: true, size: 40, color: WHITE, font: 'Calibri' })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, shading: { type: ShadingType.SOLID, color: RED, fill: RED }, children: [new TextRun({ text: isAll ? '  School Visits Report  ' : '  School Visit Report  ', size: 26, color: WHITE, font: 'Calibri' })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, shading: { type: ShadingType.SOLID, color: RED, fill: RED }, children: [new TextRun({ text: 'Dalia Zawaideh  ', italics: true, size: 22, color: 'FFCCCC', font: 'Calibri' })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, shading: { type: ShadingType.SOLID, color: RED, fill: RED }, children: [new TextRun({ text: '  Generated: ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + '  ', size: 20, color: 'FFCCCC', font: 'Calibri' })] }),
+      new Paragraph({ spacing: { after: 300 }, children: [new TextRun({ text: '' })] })
     )
 
-    sections.push(divider())
-    sections.push(redHeading('What Was Accomplished'))
-sections.push(new Paragraph({
-  spacing: { after: 200 },
-  children: [new TextRun({
-    text: completions[visit.id]?.comment || 'Not marked as done yet.',
-    size: 20, color: DARK_GRAY, font: 'Calibri',
-  })],
-}))
+    if (isAll) {
+      sections.push(redHeading('Executive Summary'))
+      sections.push(new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: 'This report provides a comprehensive overview of all school visits conducted by the HTU Outreach team.', size: 20, color: MID_GRAY, font: 'Calibri', italics: true })] }))
 
-const completionImages = completions[visit.id]?.images || []
-if (completionImages.length > 0) {
-  sections.push(new Paragraph({
-    spacing: { after: 80 },
-    children: [new TextRun({ text: 'Photos:', bold: true, size: 20, color: RED, font: 'Calibri' })],
-  }))
-  for (const imgUrl of completionImages) {
-    const buffer = await fetchImageBuffer(imgUrl)
-    if (buffer) {
-      sections.push(new Paragraph({
-        spacing: { after: 120 },
-        children: [
-          new ImageRun({
-            data: buffer,
-            transformation: { width: 400, height: 300 },
-          }),
+      const summaryTable = new Table({
+        width: { size: 50, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({ children: [new TableCell({ shading: { type: ShadingType.SOLID, color: RED, fill: RED }, children: [new Paragraph({ children: [new TextRun({ text: 'Metric', bold: true, color: WHITE, size: 20, font: 'Calibri' })] })] }), new TableCell({ shading: { type: ShadingType.SOLID, color: RED, fill: RED }, children: [new Paragraph({ children: [new TextRun({ text: 'Value', bold: true, color: WHITE, size: 20, font: 'Calibri' })] })] })] }),
+          ...[
+            ['Total Visits in Report', String(listToExport.length)],
+['Completed', String(listToExport.filter(v => completions[v.id]).length)],
+['Pending', String(listToExport.filter(v => !completions[v.id]).length)],
+['Students Collected', String(visitStudents.filter(vs => listToExport.some(v => v.id === vs.visit_id)).length)],
+          ].map(([label, value], i) => new TableRow({
+            children: [
+              new TableCell({ shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE }, children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 20, font: 'Calibri', color: DARK_GRAY })] })] }),
+              new TableCell({ shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE }, children: [new Paragraph({ children: [new TextRun({ text: value, size: 20, font: 'Calibri', color: MID_GRAY })] })] }),
+            ],
+          })),
         ],
-      }))
-    }
-  }
-}
-
-    const students = visitStudents.filter(vs => vs.visit_id === visit.id)
-    sections.push(divider())
-    sections.push(redHeading('Students Collected (' + students.length + ')'))
-
-    if (students.length > 0) {
-      const studentCols = ['Name', 'Email', 'Phone', 'Grade', 'Major Interested', 'Matched']
-      const studentHeaderRow = new TableRow({
-        children: studentCols.map(text => new TableCell({
-          shading: { type: ShadingType.SOLID, color: RED, fill: RED },
-          children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: WHITE, size: 18, font: 'Calibri' })] })],
-        })),
       })
-      const studentRows = students.map((s, i) => new TableRow({
-        children: [
-          s.full_name, s.email || '-', s.phone || '-',
-          s.grade || '-', s.major_interested || '-', s.is_matched ? 'Yes' : 'No',
-        ].map(text => new TableCell({
-          shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE },
-          children: [new Paragraph({ children: [new TextRun({ text: String(text), size: 18, font: 'Calibri', color: DARK_GRAY })] })],
-        })),
+      sections.push(summaryTable)
+      sections.push(divider())
+
+      sections.push(redHeading('All School Visits'))
+      const headerCols = ['School Name', 'Type', 'City', 'Date', 'Time', 'Status', 'Companion', 'Accomplishments', 'Students']
+      const headerRow = new TableRow({ children: headerCols.map(text => new TableCell({ shading: { type: ShadingType.SOLID, color: RED, fill: RED }, children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: WHITE, size: 18, font: 'Calibri' })] })] })) })
+      const dataRows = listToExport.map((v, i) => new TableRow({
+        children: [v.school_name, v.type, v.city || '-', v.visit_date || '-', v.visit_time || '-', v.connection_status || 'New', v.companion || '-', completions[v.id]?.comment || '-', String(visitStudents.filter(vs => vs.visit_id === v.id).length)].map(text => new TableCell({ shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE }, children: [new Paragraph({ children: [new TextRun({ text: String(text), size: 18, font: 'Calibri', color: DARK_GRAY })] })] })),
       }))
-      sections.push(new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [studentHeaderRow, ...studentRows],
-      }))
-      const visitsWithPhotos = visits.filter(v => completions[v.id]?.images?.length > 0)
-if (visitsWithPhotos.length > 0) {
-  sections.push(divider())
-  sections.push(redHeading('Photo Appendix'))
-  for (const v of visitsWithPhotos) {
-    sections.push(new Paragraph({
-      spacing: { before: 200, after: 80 },
-      children: [new TextRun({ text: v.school_name, bold: true, size: 22, color: DARK_GRAY, font: 'Calibri' })],
-    }))
-    for (const imgUrl of completions[v.id].images) {
-      const buffer = await fetchImageBuffer(imgUrl)
-      if (buffer) {
-        sections.push(new Paragraph({
-          spacing: { after: 120 },
-          children: [
-            new ImageRun({
-              data: buffer,
-              transformation: { width: 400, height: 300 },
-            }),
-          ],
+      sections.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...dataRows] }))
+
+      // Add Photo Appendix for bulk reports (Export Completed / Export Pending)
+      const visitsWithPhotos = listToExport.filter(v => completions[v.id]?.images?.length > 0)
+      if (visitsWithPhotos.length > 0) {
+        sections.push(divider())
+        sections.push(redHeading('Photo Appendix'))
+        for (const v of visitsWithPhotos) {
+          sections.push(new Paragraph({ spacing: { before: 200, after: 80 }, children: [new TextRun({ text: v.school_name, bold: true, size: 22, color: DARK_GRAY, font: 'Calibri' })] }))
+          for (const imgUrl of completions[v.id].images) {
+            const buffer = await fetchImageBuffer(imgUrl)
+            if (buffer) sections.push(new Paragraph({ spacing: { after: 120 }, children: [new ImageRun({ data: buffer, transformation: { width: 400, height: 300 } })] }))
+          }
+        }
+      }
+      
+    } else {
+      sections.push(redHeading('Visit Details'))
+      sections.push(sectionLabel('School Name', visit.school_name), sectionLabel('Visit Date', visit.visit_date || '-'), sectionLabel('Visit Time', visit.visit_time || '-'), sectionLabel('Visit Type', visit.type), sectionLabel('School Type', visit.private_or_public || '-'), sectionLabel('City', visit.city || '-'), sectionLabel('Country', visit.country || '-'), sectionLabel('Connection Status', visit.connection_status || 'New'), sectionLabel('Companion', visit.companion || '-'))
+      sections.push(divider())
+      sections.push(redHeading('What Was Accomplished'))
+      sections.push(new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: completions[visit.id]?.comment || 'Not marked as done yet.', size: 20, color: DARK_GRAY, font: 'Calibri' })] }))
+
+      const completionImages = completions[visit.id]?.images || []
+      if (completionImages.length > 0) {
+        sections.push(new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: 'Photos:', bold: true, size: 20, color: RED, font: 'Calibri' })] }))
+        for (const imgUrl of completionImages) {
+          const buffer = await fetchImageBuffer(imgUrl)
+          if (buffer) sections.push(new Paragraph({ spacing: { after: 120 }, children: [new ImageRun({ data: buffer, transformation: { width: 400, height: 300 } })] }))
+        }
+      }
+
+      const students = visitStudents.filter(vs => vs.visit_id === visit.id)
+      sections.push(divider())
+      sections.push(redHeading('Students Collected (' + students.length + ')'))
+
+      if (students.length > 0) {
+        const studentCols = ['Name', 'Email', 'Phone', 'Grade', 'Major Interested', 'Matched']
+        const studentHeaderRow = new TableRow({ children: studentCols.map(text => new TableCell({ shading: { type: ShadingType.SOLID, color: RED, fill: RED }, children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: WHITE, size: 18, font: 'Calibri' })] })] })) })
+        const studentRows = students.map((s, i) => new TableRow({
+          children: [s.full_name, s.email || '-', s.phone || '-', s.grade || '-', s.major_interested || '-', s.is_matched ? 'Yes' : 'No'].map(text => new TableCell({ shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? LIGHT_GRAY : WHITE, fill: i % 2 === 0 ? LIGHT_GRAY : WHITE }, children: [new Paragraph({ children: [new TextRun({ text: String(text), size: 18, font: 'Calibri', color: DARK_GRAY })] })] })),
         }))
+        sections.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [studentHeaderRow, ...studentRows] }))
+        
+      
+      } else {
+        sections.push(new Paragraph({ children: [new TextRun({ text: 'No students were collected during this visit.', size: 20, color: MID_GRAY, font: 'Calibri', italics: true })] }))
       }
     }
+
+    sections.push(
+      new Paragraph({ spacing: { before: 400 }, children: [new TextRun({ text: '' })] }),
+      divider(),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'HTU Students Recruitment & Outreach Office  |  Prepared for Dalia Zawaideh', size: 16, color: MID_GRAY, font: 'Calibri', italics: true })] })
+    )
+
+    const doc = new Document({ sections: [{ properties: { page: { margin: { top: 720, bottom: 720, left: 900, right: 900 } } }, children: sections }] })
+    const blob = await Packer.toBlob(doc)
+    const filename = isAll ? `HTU_${title.replace(/\s+/g, '_')}_Report.docx` : 'HTU_Visit_' + (visit.school_name.replace(/[\u0600-\u06FF\s]+/g, '') || 'Report') + '.docx'
+    saveAs(blob, filename)
+    await logActivity('Exported Word Doc', 'school_visit', isAll ? 'All Visits' : visit.school_name, 'Word document generated')
   }
-}
-    } else {
-      sections.push(new Paragraph({
-        children: [new TextRun({ text: 'No students were collected during this visit.', size: 20, color: MID_GRAY, font: 'Calibri', italics: true })],
-      }))
-    }
-  }
 
-  // ── FOOTER ─────────────────────────────────────────────────────────
-  sections.push(
-    new Paragraph({ spacing: { before: 400 }, children: [new TextRun({ text: '' })] }),
-    divider(),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [new TextRun({
-        text: 'HTU Students Recruitment & Outreach Office  |  Prepared for Dalia Zawaideh',
-        size: 16, color: MID_GRAY, font: 'Calibri', italics: true,
-      })],
-    }),
-  )
-
-  const doc = new Document({
-    sections: [{
-      properties: {
-        page: {
-          margin: { top: 720, bottom: 720, left: 900, right: 900 },
-        },
-      },
-      children: sections,
-    }],
-  })
-
-  const blob = await Packer.toBlob(doc)
-  const filename = isAll
-    ? 'HTU_All_Visits_Report.docx'
-    : 'HTU_Visit_' + (visit.school_name.replace(/[\u0600-\u06FF\s]+/g, '') || 'Report') + '.docx'
-  saveAs(blob, filename)
-  await logActivity('Exported Word Doc', 'school_visit', isAll ? 'All Visits' : visit.school_name, 'Word document generated')
-}
- const [visitStudents, setVisitStudents] = useState([])
+  const [visitStudents, setVisitStudents] = useState([])
 
   const fetchVisitStudents = async () => {
     const { data } = await supabase.from('visit_students').select('*')
@@ -518,9 +324,7 @@ if (visitsWithPhotos.length > 0) {
     fetchVisitStudents()
   }, [])
 
-
   const filteredVisits = filterType === 'all' ? visits : visits.filter(v => v.type === filterType)
-
   const pendingVisits = filteredVisits.filter(v => !completions[v.id])
   const completedVisits = filteredVisits.filter(v => completions[v.id])
 
@@ -536,63 +340,38 @@ if (visitsWithPhotos.length > 0) {
 
   return (
     <div>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>School Visits</h1>
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>Manage all school tours and fair visits</p>
         </div>
        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            onClick={() => generateWord(null)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#f59e0b', cursor: 'pointer' }}
-          >
-            <FileText size={16} />
-            Export All Word
-          </button>
-          <button
-            onClick={() => { setShowForm(true); setEditingVisit(null); setForm(emptyForm) }}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}
-          >
-            <Plus size={16} />
-            Add Visit
+          <button onClick={() => generateWord(null, pendingVisits, "Pending Visits")} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#f59e0b', cursor: 'pointer' }}>
+  <FileText size={16} /> Export Pending
+</button>
+
+<button onClick={() => generateWord(null, completedVisits, "Completed Visits")} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#10b981', cursor: 'pointer' }}>
+  <FileText size={16} /> Export Completed
+</button>
+          <button onClick={() => { setShowForm(true); setEditingVisit(null); setForm(emptyForm) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}>
+            <Plus size={16} /> Add Visit
           </button>
         </div>
       </div>
 
-      {/* Filter */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
         {['all', 'School Tours', 'School visits at HTU Campus', 'School Fairs', 'Outreach fairs', 'Outreach School Tours', 'Outreach Events'].map(type => (
-          <button
-            key={type}
-            onClick={() => setFilterType(type)}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '20px',
-              fontSize: '12px',
-              fontWeight: '500',
-              border: 'none',
-              cursor: 'pointer',
-              background: filterType === type ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
-              color: filterType === type ? '#3b82f6' : 'rgba(255,255,255,0.4)',
-              transition: 'all 0.15s',
-            }}
-          >
+          <button key={type} onClick={() => setFilterType(type)} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '500', border: 'none', cursor: 'pointer', background: filterType === type ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)', color: filterType === type ? '#3b82f6' : 'rgba(255,255,255,0.4)', transition: 'all 0.15s' }}>
             {type === 'all' ? 'All' : type}
           </button>
         ))}
       </div>
 
-      {/* Table */}
-    {/* Pending Visits Table */}
-      <div style={{ marginBottom: '8px' }}>
-        <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#ffffff', marginBottom: '12px' }}>Upcoming / Pending Visits ({pendingVisits.length})</h2>
-      </div>
+      <div style={{ marginBottom: '8px' }}><h2 style={{ fontSize: '15px', fontWeight: '600', color: '#ffffff', marginBottom: '12px' }}>Upcoming / Pending Visits ({pendingVisits.length})</h2></div>
       <div style={{ ...s.card, marginBottom: '32px' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr>
-{['School Name', 'Type', 'School Type', 'City', 'Date', 'Time', 'Status', 'Companion','Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}            </tr>
+            <tr>{['School Name', 'Type', 'School Type', 'City', 'Date', 'Time', 'Status', 'Companion','Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {loading ? <tr><td colSpan={10} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>Loading...</td></tr> : 
@@ -614,6 +393,7 @@ if (visitsWithPhotos.length > 0) {
                   </td>
                   <td style={s.td}>
                     <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => { setQrVisit(visit); setShowQRModal(true); }} title="QR Kiosk" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6' }}><QrCode size={14} /></button>
                       <button onClick={() => handleEdit(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Pencil size={14} /></button>
                       <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Trash2 size={14} /></button>
                       <button onClick={() => generateWord(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><FileText size={14} /></button>
@@ -625,7 +405,6 @@ if (visitsWithPhotos.length > 0) {
         </table>
       </div>
 
-      {/* Completed Visits Table */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', cursor: 'pointer' }} onClick={() => setIsCompletedCollapsed(!isCompletedCollapsed)}>
         <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#10b981' }}>Completed Visits ({completedVisits.length})</h2>
         <button style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)' }}>
@@ -637,11 +416,10 @@ if (visitsWithPhotos.length > 0) {
         <div style={{ ...s.card, opacity: 0.8 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>
-{['School Name', 'Type', 'School Type', 'Date','Companion', 'Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}              </tr>
+              <tr>{['School Name', 'Type', 'School Type', 'Date','Companion', 'Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {completedVisits.length === 0 ? <tr><td colSpan={6} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No completed visits yet</td></tr> : 
+              {completedVisits.length === 0 ? <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No completed visits yet</td></tr> : 
                completedVisits.map((visit) => (
                   <tr key={visit.id} style={{ background: 'rgba(16,185,129,0.02)' }}>
                     <td style={{ ...s.td, color: '#ffffff', fontWeight: '500', textDecoration: 'line-through', opacity: 0.7 }}>{visit.school_name}</td>
@@ -657,6 +435,7 @@ if (visitsWithPhotos.length > 0) {
                     </td>
                     <td style={s.td}>
                       <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => { setQrVisit(visit); setShowQRModal(true); }} title="QR Kiosk" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6' }}><QrCode size={14} /></button>
                         <button onClick={() => handleUndoComplete(visit.id)} title="Undo Completion" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b' }}><RotateCcw size={14} /></button>
                         <button onClick={() => handleEdit(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Pencil size={14} /></button>
                         <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Trash2 size={14} /></button>
@@ -674,9 +453,7 @@ if (visitsWithPhotos.length > 0) {
       {showForm && (
         <div style={s.modal}>
           <div style={s.modalCard}>
-            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: '0 0 20px 0' }}>
-              {editingVisit ? 'Edit Visit' : 'Add New Visit'}
-            </h2>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: '0 0 20px 0' }}>{editingVisit ? 'Edit Visit' : 'Add New Visit'}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {[
                 { label: 'School Name *', key: 'school_name', type: 'text', placeholder: 'e.g. Al-Ahliyya School' },
@@ -708,16 +485,10 @@ if (visitsWithPhotos.length > 0) {
                   <option value="public">Public</option>
                 </select>
               </div>
-                <div>
-  <label style={s.label}>Companion</label>
-  <input
-    type="text"
-    value={form.companion}
-    onChange={(e) => setForm({ ...form, companion: e.target.value })}
-    placeholder="e.g. Aghbar"
-    style={s.input}
-  />
-</div>
+              <div>
+                <label style={s.label}>Companion</label>
+                <input type="text" value={form.companion} onChange={(e) => setForm({ ...form, companion: e.target.value })} placeholder="e.g. Aghbar" style={s.input} />
+              </div>
               <div>
                 <label style={s.label}>Status (New/Repeated) *</label>
                 <select value={form.connection_status} onChange={(e) => setForm({ ...form, connection_status: e.target.value })} style={s.input}>
@@ -725,7 +496,6 @@ if (visitsWithPhotos.length > 0) {
                   <option value="Repeated">Repeated</option>
                 </select>
               </div>
-
               <div>
                 <label style={s.label}>Reminder Notice *</label>
                 <select value={form.reminder_time} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })} style={s.input}>
@@ -738,15 +508,10 @@ if (visitsWithPhotos.length > 0) {
                   <option value="10080">1 Week Before</option>
                 </select>
               </div>
-              
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-              <button onClick={handleSubmit} style={{ flex: 1, background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
-                {editingVisit ? 'Save Changes' : 'Add Visit'}
-              </button>
-              <button onClick={() => { setShowForm(false); setEditingVisit(null); setForm(emptyForm) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
-                Cancel
-              </button>
+              <button onClick={handleSubmit} style={{ flex: 1, background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>{editingVisit ? 'Save Changes' : 'Add Visit'}</button>
+              <button onClick={() => { setShowForm(false); setEditingVisit(null); setForm(emptyForm) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
             </div>
           </div>
         </div>
@@ -761,13 +526,7 @@ if (visitsWithPhotos.length > 0) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={s.label}>What did you accomplish? *</label>
-                <textarea
-                  value={completionComment}
-                  onChange={(e) => setCompletionComment(e.target.value)}
-                  placeholder="e.g. Met with 30 students, collected 25 contacts..."
-                  rows={4}
-                  style={{ ...s.input, resize: 'vertical' }}
-                />
+                <textarea value={completionComment} onChange={(e) => setCompletionComment(e.target.value)} placeholder="e.g. Met with 30 students, collected 25 contacts..." rows={4} style={{ ...s.input, resize: 'vertical' }} />
               </div>
               <div>
                 <label style={s.label}>Attach Photos (optional)</label>
@@ -785,13 +544,37 @@ if (visitsWithPhotos.length > 0) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-              <button onClick={handleCompleteSubmit} style={{ flex: 1, background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
-                Save
-              </button>
-              <button onClick={() => { setShowCompleteModal(false); setCompletingVisit(null) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
-                Cancel
-              </button>
+              <button onClick={handleCompleteSubmit} style={{ flex: 1, background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>Save</button>
+              <button onClick={() => { setShowCompleteModal(false); setCompletingVisit(null) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: QR Kiosk Modal */}
+      {showQRModal && qrVisit && (
+        <div style={s.modal} onClick={() => setShowQRModal(false)}>
+          <div style={{ ...s.modalCard, textAlign: 'center', maxWidth: '380px' }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#ffffff', margin: '0 0 8px 0' }}>Student Sign-Up Kiosk</h2>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 24px 0' }}>{qrVisit.school_name}</p>
+
+            <div style={{ background: '#ffffff', padding: '16px', borderRadius: '16px', display: 'inline-block', marginBottom: '24px' }}>
+              <QRCodeSVG
+                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/apply/${qrVisit.id}`}
+                size={200}
+                bgColor={"#ffffff"}
+                fgColor={"#000000"}
+                level={"H"}
+              />
+            </div>
+
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: '0 0 20px 0', lineHeight: '1.5' }}>
+              Students can scan this code with their phones to securely enter their contact information.
+            </p>
+
+            <button onClick={() => setShowQRModal(false)} style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
+              Close Kiosk
+            </button>
           </div>
         </div>
       )}

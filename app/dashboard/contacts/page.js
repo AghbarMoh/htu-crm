@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Plus, Pencil, Trash2, Mail, Phone, FileText } from 'lucide-react'
 
+
 export default function ContactsPage() {
   const [contacts, setContacts] = useState([])
   const [loading, setLoading] = useState(true)

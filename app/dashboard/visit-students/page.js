@@ -15,24 +15,66 @@ export default function VisitStudentsPage() {
   const [importing, setImporting] = useState(false)
   const supabase = createClient()
 
-  const majors = ['Energy Engineering', 'Electrical Engineering', 'Game Design and Development', 'Architectural Engineering', 'Cyber Security', 'Computer Science', 'Data Science and AI', 'Industrial Engineering']
+  const majors = [
+    'Mechanical Engineering', 
+    'Game Design and Development', 
+    'Computer Science', 
+    'Cyber Security', 
+    'Electrical Engineering', 
+    'Data Science and Artificial Intelligence', 
+    'Energy Engineering', 
+    'Architectural Engineering', 
+    'Industrial Engineering'
+  ]
 
   const emptyForm = { visit_id: '', full_name: '', email: '', phone: '', grade: '', nationality: '', major_interested: '', certificate_type: '' }
   const [form, setForm] = useState(emptyForm)
 
-  useEffect(() => { fetchStudents(); fetchVisits() }, [])
+  useEffect(() => { 
+    fetchStudents(); 
+    fetchVisits(); 
+  }, [])
 
+  // NEW BULLETPROOF FETCH FUNCTION
   const fetchStudents = async () => {
     setLoading(true)
-    const { data, error } = await supabase.from('visit_students').select('*, school_visits(school_name, visit_date)').order('created_at', { ascending: false })
-    if (!error) setStudents(data)
+    
+    // 1. Grab all students (No strict joining)
+    const { data: studentsData, error: studentError } = await supabase
+      .from('visit_students')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    // 2. Grab all school visits so we can match the names manually
+    const { data: visitsData } = await supabase
+      .from('school_visits')
+      .select('id, school_name')
+
+    if (!studentError && studentsData) {
+      // 3. Connect them together using JavaScript!
+      const combinedData = studentsData.map(student => {
+        const match = visitsData?.find(v => v.id === student.visit_id)
+        return {
+          ...student,
+          // If it finds the ID, it prints the name. If the ID is missing/deleted, it prints a warning.
+          school_visits: { school_name: match ? match.school_name : '⚠️ Unknown / Archived School' }
+        }
+      })
+      setStudents(combinedData)
+    } else {
+      console.error("Error fetching students:", studentError)
+    }
+    
     setLoading(false)
   }
 
   const fetchVisits = async () => {
-    // Adding visit_completions!inner forces an INNER JOIN, meaning it will ONLY 
-    // fetch school visits that have a matching completion record.
-    const { data, error } = await supabase.from('school_visits').select('id, school_name, visit_date, visit_completions!inner(visit_id)').order('visit_date', { ascending: false })
+    // The !inner tag forces Supabase to ONLY return visits that have a completion record
+    const { data, error } = await supabase
+      .from('school_visits')
+      .select('id, school_name, visit_date, visit_completions!inner(visit_id)')
+      .order('visit_date', { ascending: false })
+      
     if (!error) setVisits(data)
   }
 
@@ -154,7 +196,8 @@ export default function VisitStudentsPage() {
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
                   <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{student.full_name}</td>
-                  <td style={s.td}>{student.school_visits?.school_name || '-'}</td>
+                  {/* Safely print the mapped school name! */}
+                  <td style={s.td}>{student.school_visits?.school_name}</td>
                   <td style={s.td}>{student.email || '-'}</td>
                   <td style={s.td}>{student.phone || '-'}</td>
                   <td style={s.td}>{student.grade || '-'}</td>
@@ -203,26 +246,51 @@ export default function VisitStudentsPage() {
                   {visits.map(v => <option key={v.id} value={v.id}>{v.school_name} — {v.visit_date}</option>)}
                 </select>
               </div>
-              {[
-                { label: 'Full Name *', key: 'full_name', type: 'text', placeholder: 'e.g. Mohammad Aghbar' },
-                { label: 'Email', key: 'email', type: 'email', placeholder: 'e.g. student@email.com' },
-                { label: 'Phone (optional)', key: 'phone', type: 'text', placeholder: 'e.g. 0791234567' },
-                { label: 'Grade', key: 'grade', type: 'text', placeholder: 'e.g. 12' },
-                { label: 'Nationality', key: 'nationality', type: 'text', placeholder: 'e.g. Jordanian' },
-                { label: 'Certificate Type', key: 'certificate_type', type: 'text', placeholder: 'e.g. Tawjihi, IB, SAT' },
-              ].map(field => (
-                <div key={field.key}>
-                  <label style={s.label}>{field.label}</label>
-                  <input type={field.type} value={form[field.key]} onChange={(e) => setForm({ ...form, [field.key]: e.target.value })} placeholder={field.placeholder} style={s.input} />
-                </div>
-              ))}
+              
+              <div><label style={s.label}>Full Name *</label><input type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="e.g. Mohammad Aghbar" style={s.input} /></div>
+              <div><label style={s.label}>Email</label><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="e.g. student@email.com" style={s.input} /></div>
+              <div><label style={s.label}>Phone (optional)</label><input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="e.g. 0791234567" style={s.input} /></div>
+              <div><label style={s.label}>Nationality</label><input type="text" value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} placeholder="e.g. Jordanian" style={s.input} /></div>
+              
               <div>
-                <label style={s.label}>Major Interested</label>
-                <select value={form.major_interested} onChange={(e) => setForm({ ...form, major_interested: e.target.value })} style={s.input}>
-                  <option value="">Select a major</option>
-                  {majors.map(m => <option key={m} value={m}>{m}</option>)}
+                <label style={s.label}>Grade</label>
+                <select value={form.grade} onChange={(e) => setForm({ ...form, grade: e.target.value })} style={s.input}>
+                  <option value="">Select Grade</option>
+                  <option value="8th Grade">8th Grade</option>
+                  <option value="9th Grade">9th Grade</option>
+                  <option value="10th Grade">10th Grade</option>
+                  <option value="11th Grade">11th Grade</option>
+                  <option value="12th Grade">12th Grade</option>
                 </select>
               </div>
+
+              <div>
+                <label style={s.label}>Certificate Type</label>
+                <input list="cert-options" value={form.certificate_type} onChange={(e) => setForm({ ...form, certificate_type: e.target.value })} placeholder="Select or type..." style={s.input} />
+                <datalist id="cert-options">
+                  <option value="BTEC اكاديمي/ تكنولوجيا المعلومات" />
+                  <option value="BTEC اكاديمي/ مسار الانشاءات و البيئة المبنية" />
+                  <option value="BTEC اكاديمي/ مسار هندسي" />
+                  <option value="حقل الصحي + مادة الرياضيات" />
+                  <option value="حقل العلوم و التكنولوجيا" />
+                  <option value="حقل الهندسي" />
+                  <option value="حقل مدمج ( الهندسي + العلوم و التكنولوجيا)" />
+                  <option value="توجيهي علمي" />
+                  <option value="توجيهي صناعي" />
+                  <option value="IGCSE" />
+                  <option value="IB" />
+                  <option value="SAT" />
+                </datalist>
+              </div>
+
+              <div>
+                <label style={s.label}>Major Interested</label>
+                <input list="major-options" value={form.major_interested} onChange={(e) => setForm({ ...form, major_interested: e.target.value })} placeholder="Select or type..." style={s.input} />
+                <datalist id="major-options">
+                  {majors.map(m => <option key={m} value={m} />)}
+                </datalist>
+              </div>
+
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
               <button onClick={handleSubmit} style={{ flex: 1, background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>

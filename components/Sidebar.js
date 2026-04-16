@@ -42,115 +42,119 @@ export default function Sidebar() {
     router.push('/login')
   }
 
-  return (
-    <div style={{
+  const s = {
+    container: {
       height: '100vh',
       width: '240px',
-      background: 'linear-gradient(180deg, #0f0f13 0%, #1a1a2e 100%)',
-      borderRight: '1px solid rgba(255,255,255,0.06)',
+      background: '#0f0f13', // Deep matte background
+      borderRight: '1px solid rgba(255,255,255,0.05)',
       display: 'flex',
       flexDirection: 'column',
       position: 'fixed',
       left: 0,
       top: 0,
       zIndex: 100,
-    }}>
-      {/* Logo */}
-      <div style={{
-        padding: '24px 20px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+    },
+    navLink: (isActive) => ({
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      padding: '10px 16px',
+      borderRadius: '12px',
+      marginBottom: '4px',
+      textDecoration: 'none',
+      fontSize: '13px',
+      fontWeight: '500',
+      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+      
+      // Dynamic Styles
+      background: isActive ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+      border: isActive ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid transparent',
+      color: isActive ? '#3b82f6' : 'rgba(255,255,255,0.45)',
+    })
+  }
+
+  return (
+    <aside style={s.container}>
+      {/* Logo Section */}
+      <div style={{ padding: '24px 20px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            boxShadow: '0 4px 12px rgba(59,130,246,0.3)',
+            width: '32px', height: '32px', borderRadius: '8px',
+            background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 16px rgba(59,130,246,0.2)'
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
+            <Activity size={18} color="white" />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#ffffff', letterSpacing: '-0.3px' }}>HTU CRM</p>
-            <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>Students Recruitment & Outreach Office</p>
+            <p style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#fff', letterSpacing: '-0.5px' }}>HTU CRM</p>
+            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.25)', fontWeight: '500' }}>Students Recruitment & Outreach Office</p>
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
+      {/* Main Navigation */}
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '0 12px', scrollbarWidth: 'none' }}>
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
+          
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '9px 12px',
-                borderRadius: '10px',
-                marginBottom: '2px',
-                textDecoration: 'none',
-                fontSize: '13px',
-                fontWeight: isActive ? '600' : '400',
-                color: isActive ? '#ffffff' : 'rgba(255,255,255,0.45)',
-                background: isActive ? 'rgba(59,130,246,0.15)' : 'transparent',
-                borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
-                transition: 'all 0.15s',
+            <Link 
+              key={item.href} 
+              href={item.href} 
+              style={s.navLink(isActive)}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                  e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)'
+                  e.currentTarget.style.color = '#fff'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.border = '1px solid transparent'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.45)'
+                }
               }}
             >
-              <Icon size={16} style={{ flexShrink: 0, color: isActive ? '#3b82f6' : 'rgba(255,255,255,0.35)' }} />
+              <Icon size={17} style={{ 
+                color: isActive ? '#3b82f6' : 'inherit',
+                transition: 'color 0.2s'
+              }} />
               {item.label}
             </Link>
           )
         })}
       </nav>
 
-      {/* Sign Out */}
-      <div style={{
-        padding: '12px 10px',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-      }}>
+      {/* Sign Out Section */}
+      <div style={{ padding: '16px 12px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <button
           onClick={handleSignOut}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '9px 12px',
-            borderRadius: '10px',
-            width: '100%',
-            border: 'none',
-            background: 'transparent',
-            fontSize: '13px',
-            fontWeight: '400',
-            color: 'rgba(255,255,255,0.35)',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
+            display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+            borderRadius: '12px', width: '100%', border: '1px solid transparent',
+            background: 'transparent', fontSize: '13px', fontWeight: '500',
+            color: 'rgba(255,255,255,0.3)', cursor: 'pointer', transition: 'all 0.2s'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(239,68,68,0.1)'
+            e.currentTarget.style.background = 'rgba(239,68,68,0.08)'
+            e.currentTarget.style.border = '1px solid rgba(239,68,68,0.2)'
             e.currentTarget.style.color = '#f87171'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = 'rgba(255,255,255,0.35)'
+            e.currentTarget.style.border = '1px solid transparent'
+            e.currentTarget.style.color = 'rgba(255,255,255,0.3)'
           }}
         >
-          <LogOut size={16} />
+          <LogOut size={17} />
           Sign Out
         </button>
       </div>
-    </div>
+    </aside>
   )
 }

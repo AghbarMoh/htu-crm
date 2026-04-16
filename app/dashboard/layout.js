@@ -1,4 +1,5 @@
 import Sidebar from '@/components/Sidebar'
+import DaliaBot from '@/components/DaliaBot'
 
 export default function DashboardLayout({ children }) {
   return (
@@ -13,6 +14,7 @@ export default function DashboardLayout({ children }) {
       }}>
         {children}
       </main>
+      <DaliaBot />
     </div>
   )
 }
