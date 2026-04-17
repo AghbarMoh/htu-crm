@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import {
   School, Users, ClipboardList, BookUser, CheckCircle,
-  ChevronLeft, ChevronRight, Send, Bot,
+  ChevronLeft, ChevronRight, Send, Bot, TrendingUp, 
+  Calendar, Clock, MapPin, Heart
 } from 'lucide-react'
-import Link from 'next/link'
 
 function useCountUp(target, duration = 800) {
   const [val, setVal] = useState(0)
@@ -91,9 +92,59 @@ export default function DashboardPage() {
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
   const messagesEndRef = useRef(null)
+  const [dailyTip, setDailyTip] = useState('')
+
+  // You can add as many tips as you want here!
+  const lifeTips = [
+    "Take a deep breath. You're doing better than you think.",
+    "Progress, not perfection.",
+    "Remember to drink water and step away from the screen.",
+    "Your energy introduces you before you even speak.",
+    "Small steps every day add up to massive results.",
+    "Don't forget to celebrate the small wins.",
+    "Kindness is a superpower.",
+    "Focus on being productive, not just busy.",
+    "A positive mindset brings positive things."
+  ]
   
 
-  useEffect(() => { fetchDashboardData() }, [])
+  useEffect(() => { 
+    fetchDashboardData() 
+
+    const fetchDailyTip = async () => {
+      const today = new Date().toDateString() // e.g., "Fri Apr 17 2026"
+      const cachedTip = localStorage.getItem('htu_daily_tip')
+      const cachedDate = localStorage.getItem('htu_daily_tip_date')
+      
+
+      // 1. If we already fetched a tip today, just use the saved one
+      if (cachedTip && cachedDate === today) {
+        setDailyTip(cachedTip)
+        return
+      }
+
+      // 2. If it's a new day, fetch a fresh tip from the internet
+      try {
+        // We are using the free 'Advice Slip' API which is perfect for short life tips
+        const res = await fetch('https://api.adviceslip.com/advice')
+        const data = await res.json()
+        const newTip = data.slip.advice
+
+        // Save it to state AND save it to the browser for the rest of the day
+        setDailyTip(newTip)
+        localStorage.setItem('htu_daily_tip', newTip)
+        localStorage.setItem('htu_daily_tip_date', today)
+        
+      } catch (error) {
+        // 3. The Fallback: If the internet is down or the API fails, 
+        // we safely fall back to your hardcoded list so Dalia still gets a tip!
+        const daysSinceEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) 
+        setDailyTip(lifeTips[daysSinceEpoch % lifeTips.length])
+      }
+    }
+
+    fetchDailyTip()
+  }, [])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages])
 
   const fetchDashboardData = async () => {
@@ -191,12 +242,24 @@ export default function DashboardPage() {
 
       {/* ── Header ── */}
       <div>
-        <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>
-          Good morning, {user?.full_name?.split(' ')[0] || 'Dalia'} 👋
+        <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          Good morning, {user?.full_name?.split(' ')[0] || 'Dalia'} 
+          <Heart size={20} color="#ef4444" fill="#ef4444" /> 
         </h1>
-        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
+        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', margin: '0 0 12px 0' }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
+
+        {/* Tip of the day section */}
+        {dailyTip && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '8px', borderLeft: '2px solid rgba(255,255,255,0.1)', width: 'fit-content' }}>
+            <span style={{ fontSize: '14px' }}>💡</span>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0, fontStyle: 'italic' }}>
+              <span style={{ fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginRight: '4px' }}>Tip of the day:</span> 
+              {dailyTip}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Stat Cards ── */}
