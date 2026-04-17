@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
 import { User, Lock, Shield } from 'lucide-react'
+import { createClient } from '@/lib/supabase' // <-- ADD THIS LINE
 
 export default function SettingsPage() {
   const [user, setUser] = useState(null)
@@ -12,10 +12,10 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordMsg, setPasswordMsg] = useState('')
   const [passwordError, setPasswordError] = useState('')
-  const supabase = createClient()
+  
+const supabase = createClient()
 
-  useEffect(() => { fetchUser() }, [])
-
+  // 1. Define the function FIRST
   const fetchUser = async () => {
     setLoading(true)
     const { data: sessionData } = await supabase.auth.getSession()
@@ -27,6 +27,11 @@ export default function SettingsPage() {
     }
     setLoading(false)
   }
+
+  // 2. Run it in useEffect AFTER it is defined
+  useEffect(() => { 
+    fetchUser() 
+  }, [])
 
   const handleChangePassword = async () => {
     setPasswordMsg('')

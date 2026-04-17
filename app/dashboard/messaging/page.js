@@ -1,7 +1,5 @@
 'use client'
-import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
 import { Mail, MessageCircle, Send, Users, BookUser, School } from 'lucide-react'
 
 export default function MessagingPage() {
@@ -19,7 +17,7 @@ export default function MessagingPage() {
   const [filterPaid, setFilterPaid] = useState('all')
   const [filterMajor, setFilterMajor] = useState('all')
   const [waMessage, setWaMessage] = useState('')
-  const supabase = createClient()
+  
 
   const majors = ['Energy Engineering', 'Electrical Engineering', 'Game Design and Development', 'Architectural Engineering', 'Cyber Security', 'Computer Science', 'Data Science and AI', 'Industrial Engineering']
 
@@ -32,19 +30,28 @@ export default function MessagingPage() {
   useEffect(() => { fetchApplicants(); fetchContacts(); fetchVisitStudents() }, [])
 
   const fetchApplicants = async () => {
-    const { data, error } = await supabase.from('applicants').select('id, full_name, email, phone, paid, major').eq('is_archived', false).order('full_name')
-    if (!error) setApplicants(data)
+    try {
+      const res = await fetch('/api/applicants?archived=false')
+      const json = await res.json()
+      if (json.data) setApplicants(json.data)
+    } catch (err) { console.error(err) }
     setLoading(false)
   }
 
   const fetchContacts = async () => {
-    const { data, error } = await supabase.from('contacts').select('id, full_name, email, phone').order('full_name')
-    if (!error) setContacts(data)
+    try {
+      const res = await fetch('/api/contacts')
+      const json = await res.json()
+      if (json.data) setContacts(json.data)
+    } catch (err) { console.error(err) }
   }
 
   const fetchVisitStudents = async () => {
-    const { data, error } = await supabase.from('visit_students').select('id, full_name, email, phone').order('full_name')
-    if (!error) setVisitStudents(data)
+    try {
+      const res = await fetch('/api/visit-students')
+      const json = await res.json()
+      if (json.students) setVisitStudents(json.students)
+    } catch (err) { console.error(err) }
   }
 
   const getFilteredApplicants = () => {
@@ -74,15 +81,33 @@ export default function MessagingPage() {
     if (selectedEmails.length === 0) { alert('Please select at least one email'); return }
     if (!emailSubject || !emailBody) { alert('Please fill in subject and message'); return }
     setSending(true)
-    const { error } = await supabase.from('messages_log').insert([{ channel: 'email', recipients: selectedEmails, subject: emailSubject, body: emailBody }])
-    if (!error) {
-      await logActivity('Sent bulk email', 'messaging', emailSubject, 'Sent to ' + selectedEmails.length + ' recipients')
-      const mailtoLink = 'mailto:' + selectedEmails.join(',') + '?subject=' + encodeURIComponent(emailSubject) + '&body=' + encodeURIComponent(emailBody)
-      window.location.href = mailtoLink
-      alert('Email client opened with ' + selectedEmails.length + ' recipients.')
-      clearSelection(); setEmailSubject(''); setEmailBody('')
+    
+    try {
+      const res = await fetch('/api/messaging', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'insert',
+          payload: { channel: 'email', recipients: selectedEmails, subject: emailSubject, body: emailBody }
+        })
+      })
+      const json = await res.json()
+      
+      if (json.success) {
+        const mailtoLink = 'mailto:' + selectedEmails.join(',') + '?subject=' + encodeURIComponent(emailSubject) + '&body=' + encodeURIComponent(emailBody)
+        window.location.href = mailtoLink
+        alert('Email client opened with ' + selectedEmails.length + ' recipients.')
+        clearSelection()
+        setEmailSubject('')
+        setEmailBody('')
+      } else {
+        alert('Error logging message: ' + json.error)
+      }
+    } catch (error) {
+      console.error('Messaging Proxy Error:', error)
+    } finally {
+      setSending(false)
     }
-    setSending(false)
   }
 
   const generateWALink = (phone) => {

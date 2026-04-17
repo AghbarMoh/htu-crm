@@ -1,8 +1,7 @@
 'use client'
-
+import { createClient } from '@/lib/supabase'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
 import Image from 'next/image'
 
 export default function LoginPage() {
@@ -20,6 +19,7 @@ export default function LoginPage() {
   const isDragging = useRef(false)
   const startY = useRef(0)
   const router = useRouter()
+  
   const supabase = createClient()
 
   const handleLogin = async () => {

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { Download, Filter, ChevronDown, ChevronUp } from 'lucide-react'
 
@@ -11,7 +10,7 @@ export default function AnalyticsPage() {
   const [visitStudents, setVisitStudents] = useState([])
   const [contacts, setContacts] = useState([])
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  
 
   // --- NEW FILTER & GROUPING STATE ---
   const [activeGrouping, setActiveGrouping] = useState([]) // dimensions to split the bars
@@ -26,27 +25,29 @@ export default function AnalyticsPage() {
 
   const fetchAll = async () => {
     setLoading(true)
-    const [a, v, vs, c] = await Promise.all([
-      supabase.from('applicants').select('*'),
-      // Matches your existing logic to only include completed visits
-      supabase.from('school_visits').select('*, visit_completions!inner(visit_id)'),
-      supabase.from('visit_students').select('*'),
-      supabase.from('contacts').select('*'),
-    ])
-    if (!a.error) setApplicants(a.data)
-    if (!v.error) {
-      setVisits(v.data)
-      // Initialize filters with all unique values found in data
-      const uniqueTypes = [...new Set(v.data.map(item => item.type))].filter(Boolean)
-      setFilters({
-        type: uniqueTypes,
-        private_or_public: ['private', 'public'],
-        connection_status: ['New', 'Repeated']
-      })
+    try {
+      const res = await fetch('/api/analytics')
+      if (!res.ok) throw new Error('Failed to fetch analytics')
+      
+      const data = await res.json()
+      
+      if (data) {
+        setApplicants(data.applicants || [])
+        
+        // Match the old logic: Only keep visits that have a matching completion record
+        const completedVisits = (data.visits || []).filter(visit => 
+          (data.completions || []).some(comp => comp.visit_id === visit.id)
+        )
+        
+        setVisits(completedVisits)
+        setVisitStudents(data.students || [])
+        setContacts(data.contacts || [])
+      }
+    } catch (error) {
+      console.error("Analytics Proxy Error:", error)
+    } finally {
+      setLoading(false)
     }
-    if (!vs.error) setVisitStudents(vs.data)
-    if (!c.error) setContacts(c.data)
-    setLoading(false)
   }
 
   // Toggle dimension for grouping (e.g. split bars by status)

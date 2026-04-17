@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
 import { Plus, Pencil, Trash2, Upload } from 'lucide-react'
 
 export default function VisitStudentsPage() {
@@ -13,7 +12,7 @@ export default function VisitStudentsPage() {
   const [filterVisit, setFilterVisit] = useState('all')
   const [importVisitId, setImportVisitId] = useState('')
   const [importing, setImporting] = useState(false)
-  const supabase = createClient()
+  
 
   const majors = [
     'Mechanical Engineering', 
@@ -30,63 +29,51 @@ export default function VisitStudentsPage() {
   const emptyForm = { visit_id: '', full_name: '', email: '', phone: '', grade: '', nationality: '', major_interested: '', certificate_type: '' }
   const [form, setForm] = useState(emptyForm)
 
-  useEffect(() => { 
-    fetchStudents(); 
-    fetchVisits(); 
-  }, [])
-
-  // NEW BULLETPROOF FETCH FUNCTION
-  const fetchStudents = async () => {
+  const fetchAllData = async () => {
     setLoading(true)
-    
-    // 1. Grab all students (No strict joining)
-    const { data: studentsData, error: studentError } = await supabase
-      .from('visit_students')
-      .select('*')
-      .order('created_at', { ascending: false })
+    try {
+      const res = await fetch('/api/visit-students')
+      const json = await res.json()
 
-    // 2. Grab all school visits so we can match the names manually
-    const { data: visitsData } = await supabase
-      .from('school_visits')
-      .select('id, school_name')
+      if (json.visits) setVisits(json.visits)
 
-    if (!studentError && studentsData) {
-      // 3. Connect them together using JavaScript!
-      const combinedData = studentsData.map(student => {
-        const match = visitsData?.find(v => v.id === student.visit_id)
-        return {
-          ...student,
-          // If it finds the ID, it prints the name. If the ID is missing/deleted, it prints a warning.
-          school_visits: { school_name: match ? match.school_name : '⚠️ Unknown / Archived School' }
-        }
-      })
-      setStudents(combinedData)
-    } else {
-      console.error("Error fetching students:", studentError)
+      if (json.students && json.visits) {
+        const combinedData = json.students.map(student => {
+          const match = json.visits.find(v => v.id === student.visit_id)
+          return {
+            ...student,
+            school_visits: { school_name: match ? match.school_name : '⚠️ Unknown / Archived School' }
+          }
+        })
+        setStudents(combinedData)
+      }
+    } catch (error) {
+      console.error("Fetch error:", error)
+    } finally {
+      setLoading(false)
     }
-    
-    setLoading(false)
   }
 
-  const fetchVisits = async () => {
-    // The !inner tag forces Supabase to ONLY return visits that have a completion record
-    const { data, error } = await supabase
-      .from('school_visits')
-      .select('id, school_name, visit_date, visit_completions!inner(visit_id)')
-      .order('visit_date', { ascending: false })
-      
-    if (!error) setVisits(data)
-  }
+  useEffect(() => { 
+    fetchAllData() 
+  }, [])
 
   const handleSubmit = async () => {
     if (!form.full_name || !form.visit_id) { alert('Please fill in student name and select a school visit'); return }
-    if (editingStudent) {
-      const { error } = await supabase.from('visit_students').update(form).eq('id', editingStudent.id)
-      if (!error) { fetchStudents(); setShowForm(false); setEditingStudent(null); setForm(emptyForm) }
-    } else {
-      const { error } = await supabase.from('visit_students').insert([form])
-      if (!error) { fetchStudents(); setShowForm(false); setForm(emptyForm) }
-    }
+    
+    const action = editingStudent ? 'update' : 'insert'
+    const payload = editingStudent ? { ...form, id: editingStudent.id } : form
+
+    await fetch('/api/visit-students', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, payload })
+    })
+
+    fetchAllData()
+    setShowForm(false)
+    setEditingStudent(null)
+    setForm(emptyForm)
   }
 
   const handleEdit = (student) => {
@@ -97,8 +84,14 @@ export default function VisitStudentsPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure?')) return
-    const { error } = await supabase.from('visit_students').delete().eq('id', id)
-    if (!error) fetchStudents()
+    const student = students.find(s => s.id === id)
+    
+    await fetch('/api/visit-students', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', payload: { id, full_name: student?.full_name } })
+    })
+    fetchAllData()
   }
 
   const handleImport = async (e) => {
@@ -124,9 +117,20 @@ export default function VisitStudentsPage() {
         certificate_type: row['Certificate Type'] || row['certificate_type'] || '',
       })).filter(s => s.full_name)
       if (students.length === 0) { alert('No valid students found'); setImporting(false); e.target.value = ''; return }
-      const { error } = await supabase.from('visit_students').insert(students)
-      if (!error) { alert('Successfully imported ' + students.length + ' students'); fetchStudents() }
-      else alert('Error importing students')
+      
+      const res = await fetch('/api/visit-students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'import', payload: students })
+      })
+      const json = await res.json()
+
+      if (json.success) { 
+        alert('Successfully imported ' + students.length + ' students')
+        fetchAllData() 
+      } else {
+        alert('Error importing students: ' + json.error)
+      }
       setImporting(false); e.target.value = ''
     }
     reader.readAsArrayBuffer(file)

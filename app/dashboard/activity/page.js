@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
 import { Search, Trash2 } from 'lucide-react'
 
 export default function ActivityPage() {
@@ -9,29 +8,35 @@ export default function ActivityPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('all')
-  const supabase = createClient()
+  
 
   useEffect(() => { fetchActivities() }, [])
 
+  // 1. Fetching through the Backend Proxy
   const fetchActivities = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('activity_log')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(200)
-    if (!error) setActivities(data)
-    setLoading(false)
+    try {
+      const res = await fetch('/api/activity')
+      const json = await res.json()
+      if (json.data) setActivities(json.data)
+    } catch (error) {
+      console.error("Failed to fetch activities:", error)
+    } finally {
+      setLoading(false)
+    }
   }
+
+  // 2. Deleting one item through the Proxy
   const handleDeleteOne = async (id) => {
     if (!confirm('Delete this activity?')) return
-    await supabase.from('activity_log').delete().eq('id', id)
+    await fetch(`/api/activity?id=${id}`, { method: 'DELETE' })
     fetchActivities()
   }
 
+  // 3. Deleting all items through the Proxy
   const handleDeleteAll = async () => {
     if (!confirm('Delete ALL activity logs?')) return
-    await supabase.from('activity_log').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    await fetch('/api/activity?all=true', { method: 'DELETE' })
     fetchActivities()
   }
 

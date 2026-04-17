@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
+
 import {
   LayoutDashboard, School, Users, ClipboardList, BookUser,
   CalendarCheck, MessageSquare, BarChart2, Settings, LogOut,
@@ -26,7 +26,7 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
+  
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()

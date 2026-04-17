@@ -1,7 +1,5 @@
 'use client'
-import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
 import { Search, ChevronDown, ChevronUp } from 'lucide-react'
 
 export default function ArchivePage() {
@@ -9,28 +7,34 @@ export default function ArchivePage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [expandedLabel, setExpandedLabel] = useState(null)
-  const supabase = createClient()
+  
 
   useEffect(() => { fetchArchives() }, [])
 
   const fetchArchives = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('applicants')
-      .select('*')
-      .eq('is_archived', true)
-      .order('archived_at', { ascending: false })
-    if (!error) {
-      // Group by archive_label
-      const grouped = {}
-      data.forEach(a => {
-        const label = a.archive_label || 'Unlabeled'
-        if (!grouped[label]) grouped[label] = { label, date: a.archived_at, applicants: [] }
-        grouped[label].applicants.push(a)
-      })
-      setArchives(Object.values(grouped))
+    try {
+      const res = await fetch('/api/applicants?archived=true')
+      const json = await res.json()
+      
+      if (json.data) {
+        // Group by archive_label
+        const grouped = {}
+        json.data.forEach(a => {
+          const label = a.archive_label || 'Unlabeled'
+          if (!grouped[label]) grouped[label] = { label, date: a.archived_at, applicants: [] }
+          grouped[label].applicants.push(a)
+        })
+        
+        // Sort grouped archives by date (newest first)
+        const sortedArchives = Object.values(grouped).sort((a, b) => new Date(b.date) - new Date(a.date))
+        setArchives(sortedArchives)
+      }
+    } catch (error) {
+      console.error("Failed to fetch archives:", error)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const filteredArchives = archives.map(archive => ({
@@ -112,9 +116,18 @@ export default function ArchivePage() {
                  onClick={async (e) => {
                     e.stopPropagation()
                     if (!confirm('Delete this entire archive batch?')) return
+                    
                     const ids = archive.applicants.map(a => a.id)
-                    await supabase.from('applicants').delete().in('id', ids)
-                    await logActivity('Deleted archive batch', 'archive', archive.label, 'Deleted ' + archive.applicants.length + ' archived applicants')
+                    
+                    await fetch('/api/applicants', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        action: 'delete_batch', 
+                        payload: { ids, label: archive.label, count: archive.applicants.length } 
+                      })
+                    })
+                    
                     fetchArchives()
                   }}
                   style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '4px 12px', fontSize: '11px', fontWeight: '600', color: '#ef4444', cursor: 'pointer' }}

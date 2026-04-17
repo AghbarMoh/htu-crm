@@ -1,7 +1,5 @@
 'use client'
-import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
 import { QRCodeSVG } from 'qrcode.react' // <-- NEW IMPORT
 import { Plus, Pencil, Trash2, CheckCircle, Filter, ChevronDown, ChevronUp, RotateCcw, FileText, QrCode } from 'lucide-react' // <-- Added QrCode
 
@@ -24,7 +22,7 @@ export default function SchoolVisitsPage() {
   const [showQRModal, setShowQRModal] = useState(false)
   const [qrVisit, setQrVisit] = useState(null)
   
-  const supabase = createClient()
+  
 
   const emptyForm = {
     school_name: '',
@@ -42,27 +40,33 @@ export default function SchoolVisitsPage() {
 
   const [form, setForm] = useState(emptyForm)
 
-  const fetchVisits = async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('school_visits')
-      .select('*')
-      .order('visit_date', { ascending: true })
-      .order('visit_time', { ascending: true })
-    if (!error) setVisits(data)
-    setLoading(false)
-  }
+  const [visitStudents, setVisitStudents] = useState([])
 
-  const fetchCompletions = async () => {
-    const { data, error } = await supabase.from('visit_completions').select('*')
-    if (!error) {
-      const map = {}
-      data.forEach(c => { map[c.visit_id] = c })
-      setCompletions(map)
+  const fetchAllData = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/visits')
+      const json = await res.json()
+      
+      if (json.visits) setVisits(json.visits)
+      if (json.students) setVisitStudents(json.students)
+      if (json.completions) {
+        const map = {}
+        json.completions.forEach(c => { map[c.visit_id] = c })
+        setCompletions(map)
+      }
+    } catch (error) {
+      console.error("Failed to fetch visits data:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleSubmit = async () => {
+  useEffect(() => {
+    fetchAllData()
+  }, [])
+
+ const handleSubmit = async () => {
     if (!form.school_name || !form.visit_date || !form.visit_time) {
       alert('Please fill in school name, visit date, and visit time to set a reminder.')
       return
@@ -72,23 +76,26 @@ export default function SchoolVisitsPage() {
       ...form,
       visit_time: form.visit_time === '' ? null : form.visit_time,
     }
+    const action = editingVisit ? 'update' : 'insert'
+    if (editingVisit) payload.id = editingVisit.id
 
     let savedVisit;
-
-    if (editingVisit) {
-      const { data, error } = await supabase.from('school_visits').update(payload).eq('id', editingVisit.id).select().single()
-      if (error) { alert('Update Error: ' + error.message); return }
-      savedVisit = data;
-      await logActivity('Edited school visit', 'school_visit', payload.school_name, 'Updated visit details')
-    } else {
-      const { data, error } = await supabase.from('school_visits').insert([payload]).select().single()
-      if (error) { alert('Insert Error: ' + error.message); return }
-      savedVisit = data;
-      await logActivity('Created school visit', 'school_visit', payload.school_name, 'New visit added')
+    try {
+      const res = await fetch('/api/visits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, payload })
+      })
+      const json = await res.json()
+      if (json.error) { alert('Error: ' + json.error); return }
+      savedVisit = json.data
+    } catch (err) {
+      console.error("Submission error:", err)
+      return
     }
     
     try {
-      if (form.reminder_time !== 'none') {
+      if (form.reminder_time !== 'none' && savedVisit) {
         const res = await fetch('/api/schedule-reminder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -104,14 +111,22 @@ export default function SchoolVisitsPage() {
         const scheduleData = await res.json();
         if (scheduleData.error) alert(scheduleData.error);
         if (scheduleData.messageId) {
-          await supabase.from('school_visits').update({ qstash_message_id: scheduleData.messageId }).eq('id', savedVisit.id);
+          // Update the QStash ID securely via proxy
+          await fetch('/api/visits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'update_qstash', payload: { id: savedVisit.id, qstash_message_id: scheduleData.messageId } })
+          })
         }
       }
     } catch (err) {
       console.error("Failed to schedule reminder:", err);
     }
 
-    fetchVisits(); setShowForm(false); setEditingVisit(null); setForm(emptyForm)
+    fetchAllData()
+    setShowForm(false)
+    setEditingVisit(null)
+    setForm(emptyForm)
   }
 
   const handleEdit = (visit) => {
@@ -132,16 +147,7 @@ export default function SchoolVisitsPage() {
     setShowForm(true)
   }
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this visit?')) return
-    const visit = visits.find(v => v.id === id)
-    const { error } = await supabase.from('school_visits').delete().eq('id', id)
-    if (!error) {
-      await logActivity('Deleted school visit', 'school_visit', visit?.school_name, 'School visit removed')
-      fetchVisits()
-    }
-  }
-
+  
   const handleMarkDone = (visit) => {
     setCompletingVisit(visit)
     setCompletionComment('')
@@ -154,45 +160,65 @@ export default function SchoolVisitsPage() {
     if (files.length === 0) return
     setUploadingImages(true)
     const uploadedUrls = []
+    
     for (const file of files) {
-      const fileName = Date.now() + '-' + file.name
-      const { data, error } = await supabase.storage.from('task-images').upload(fileName, file)
-      if (!error && data) {
-        const { data: urlData } = supabase.storage.from('task-images').getPublicUrl(data.path)
-        uploadedUrls.push(urlData.publicUrl)
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('bucket', 'task-images') // Keeping the same bucket you used
+
+      try {
+        const res = await fetch('/api/storage', {
+          method: 'POST',
+          body: formData
+        })
+        const json = await res.json()
+        if (json.url) uploadedUrls.push(json.url)
+      } catch (error) {
+        console.error("Upload proxy error:", error)
       }
     }
+    
     setCompletionImages(prev => [...prev, ...uploadedUrls])
     setUploadingImages(false)
+  }
+
+  const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this visit?')) return
+    const visit = visits.find(v => v.id === id)
+    await fetch('/api/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', payload: { id, school_name: visit?.school_name } })
+    })
+    fetchAllData()
   }
 
   const handleCompleteSubmit = async () => {
     if (!completionComment) return alert('Please write what you accomplished during this visit')
     
-    const { error } = await supabase.from('visit_completions').upsert({
-      visit_id: completingVisit.id,
-      comment: completionComment,
-      images: completionImages,
-    }, { onConflict: 'visit_id' })
-    if (!error) {
-      await logActivity('Completed school visit', 'school_visit', completingVisit?.school_name, completionComment)
-      setShowCompleteModal(false)
-      setCompletingVisit(null)
-      setCompletionComment('')
-      setCompletionImages([])
-      fetchCompletions()
-    }
+    await fetch('/api/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'complete', payload: { visit_id: completingVisit.id, comment: completionComment, images: completionImages, school_name: completingVisit.school_name } })
+    })
+    setShowCompleteModal(false)
+    setCompletingVisit(null)
+    setCompletionComment('')
+    setCompletionImages([])
+    fetchAllData()
   }
 
   const handleUndoComplete = async (visitId) => {
     if (!confirm('Are you sure you want to undo this completion?')) return
-    const { error } = await supabase.from('visit_completions').delete().eq('visit_id', visitId)
-    if (!error) {
-      await logActivity('Undid visit completion', 'school_visit', visits.find(v=>v.id===visitId)?.school_name, 'Moved back to pending')
-      fetchCompletions()
-    } else alert('Error undoing: ' + error.message)
+    const visit = visits.find(v => v.id === visitId)
+    await fetch('/api/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'undo_complete', payload: { visit_id: visitId, school_name: visit?.school_name } })
+    })
+    fetchAllData()
   }
-
+  
   const generateWord = async (visit = null, customList = null, title = "All Visits") => {
     const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, ShadingType, ImageRun } = await import('docx')
     const { saveAs } = await import('file-saver')
@@ -311,18 +337,6 @@ export default function SchoolVisitsPage() {
     await logActivity('Exported Word Doc', 'school_visit', isAll ? 'All Visits' : visit.school_name, 'Word document generated')
   }
 
-  const [visitStudents, setVisitStudents] = useState([])
-
-  const fetchVisitStudents = async () => {
-    const { data } = await supabase.from('visit_students').select('*')
-    if (data) setVisitStudents(data)
-  }
-
-  useEffect(() => {
-    fetchVisits()
-    fetchCompletions()
-    fetchVisitStudents()
-  }, [])
 
   const filteredVisits = filterType === 'all' ? visits : visits.filter(v => v.type === filterType)
   const pendingVisits = filteredVisits.filter(v => !completions[v.id])

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { createClient } from '@/lib/supabase'
 import {
   School, Users, ClipboardList, BookUser, CheckCircle,
   ChevronLeft, ChevronRight, Send, Bot,
@@ -92,46 +91,33 @@ export default function DashboardPage() {
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
   const messagesEndRef = useRef(null)
-  const supabase = createClient()
+  
 
-  useEffect(() => { fetchAll(); fetchUser() }, [])
+  useEffect(() => { fetchDashboardData() }, [])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages])
 
-  const fetchUser = async () => {
-    const { data: sessionData } = await supabase.auth.getSession()
-    const u = sessionData?.session?.user
-    if (u) {
-      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', u.id).single()
-      setUser(profile)
-    }
-  }
-
-  const fetchAll = async () => {
+  const fetchDashboardData = async () => {
     setLoading(true)
-    const [a, v, vs, c, visits, comps] = await Promise.all([
-      supabase.from('applicants').select('id, paid, is_matched').eq('is_archived', false),
-      supabase.from('visit_completions').select('id'),
-      supabase.from('visit_students').select('id'),
-      supabase.from('contacts').select('id'),
-      supabase.from('school_visits').select('*').order('visit_date', { ascending: true }),
-      supabase.from('visit_completions').select('*'),
-    ])
-    if (!a.error) {
-      setStats({
-        totalApplicants: a.data.length,
-        totalVisits: v.data?.length || 0,
-        totalContacts: c.data?.length || 0,
-        totalVisitStudents: vs.data?.length || 0,
-        matchedApplicants: a.data.filter(x => x.is_matched).length,
-      })
+    try {
+      const res = await fetch('/api/dashboard')
+      if (!res.ok) throw new Error('Failed to fetch dashboard data')
+      
+      const json = await res.json()
+      
+      if (json.profile) setUser(json.profile)
+      if (json.stats) setStats(json.stats)
+      if (json.allVisits) setAllVisits(json.allVisits)
+      
+      if (json.completions) {
+        const map = {}
+        json.completions.forEach(c => { map[c.visit_id] = c })
+        setCompletions(map)
+      }
+    } catch (error) {
+      console.error("Dashboard proxy error:", error)
+    } finally {
+      setLoading(false)
     }
-    if (!visits.error) setAllVisits(visits.data)
-    if (!comps.error) {
-      const map = {}
-      comps.data.forEach(c => { map[c.visit_id] = c })
-      setCompletions(map)
-    }
-    setLoading(false)
   }
 
   const sendChat = async (e) => {

@@ -1,7 +1,5 @@
 'use client'
-import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
 import { Plus, Pencil, Trash2, CheckCircle, Circle } from 'lucide-react'
 
 export default function TasksPage() {
@@ -15,16 +13,31 @@ export default function TasksPage() {
   const [completionImages, setCompletionImages] = useState([])
   const [uploadingImages, setUploadingImages] = useState(false)
   const [filterStatus, setFilterStatus] = useState('pending')
-  const supabase = createClient()
+  
 
   const emptyForm = { title: '', description: '', due_date: '' }
   const [form, setForm] = useState(emptyForm)
 
  const fetchTasks = async () => {
     setLoading(true)
-    const { data, error } = await supabase.from('tasks').select('*, task_completions(*)').order('due_date', { ascending: true })
-    if (!error) setTasks(data)
-    setLoading(false)
+    try {
+      const res = await fetch('/api/tasks')
+      const json = await res.json()
+      if (json.tasks) {
+        // Combine tasks with completions so your UI doesn't break
+        const formattedTasks = json.tasks.map(task => ({
+          ...task,
+          task_completions: (json.completions || []).filter(c => c.task_id === task.id)
+        }))
+        // Sort by due date (ascending) to match old logic
+        formattedTasks.sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
+        setTasks(formattedTasks)
+      }
+    } catch (error) {
+      console.error("Failed to fetch tasks:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -33,19 +46,20 @@ export default function TasksPage() {
 
   const handleSubmit = async () => {
     if (!form.title) { alert('Please fill in task title'); return }
-    if (editingTask) {
-      const { error } = await supabase.from('tasks').update(form).eq('id', editingTask.id)
-      if (!error) {
-        await logActivity('Edited task', 'task', form.title, 'Task details updated')
-        fetchTasks(); setShowForm(false); setEditingTask(null); setForm(emptyForm)
-      }
-    } else {
-      const { error } = await supabase.from('tasks').insert([form])
-      if (!error) {
-        await logActivity('Added task', 'task', form.title, 'New task created' + (form.due_date ? ' due ' + form.due_date : ''))
-        fetchTasks(); setShowForm(false); setForm(emptyForm)
-      }
-    }
+    
+    const action = editingTask ? 'update' : 'insert'
+    const payload = editingTask ? { ...form, id: editingTask.id } : form
+
+    await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, payload })
+    })
+
+    fetchTasks()
+    setShowForm(false)
+    setEditingTask(null)
+    setForm(emptyForm)
   }
   const handleEdit = (task) => {
     setEditingTask(task)
@@ -56,11 +70,14 @@ export default function TasksPage() {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure?')) return
     const task = tasks.find(t => t.id === id)
-    const { error } = await supabase.from('tasks').delete().eq('id', id)
-    if (!error) {
-      await logActivity('Deleted task', 'task', task?.title, 'Task removed')
-      fetchTasks()
-    }
+    
+    await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', payload: { id, title: task?.title } })
+    })
+    
+    fetchTasks()
   }
 
   const handleMarkDone = (task) => {
@@ -75,34 +92,67 @@ export default function TasksPage() {
     if (files.length === 0) return
     setUploadingImages(true)
     const uploadedUrls = []
+    
     for (const file of files) {
-      const timestamp = new Date().getTime()
-      const fileName = timestamp + '-' + file.name
-      const { data, error } = await supabase.storage.from('task-images').upload(fileName, file)
-      if (!error && data) {
-        const { data: urlData } = supabase.storage.from('task-images').getPublicUrl(data.path)
-        uploadedUrls.push(urlData.publicUrl)
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('bucket', 'task-images')
+
+      try {
+        const res = await fetch('/api/storage', {
+          method: 'POST',
+          body: formData
+        })
+        const json = await res.json()
+        
+        if (json.url) {
+          uploadedUrls.push(json.url)
+        } else {
+          console.error("Upload failed:", json.error)
+        }
+      } catch (error) {
+        console.error("Upload proxy error:", error)
       }
     }
+    
     setCompletionImages(prev => [...prev, ...uploadedUrls])
     setUploadingImages(false)
   }
 
  const handleCompleteSubmit = async () => {
     if (!completionComment) { alert('Please write what you achieved'); return }
-    const { error: completionError } = await supabase.from('task_completions').insert([{ task_id: completingTask.id, comment: completionComment, images: completionImages }])
-    if (!completionError) {
-      await supabase.from('tasks').update({ is_done: true }).eq('id', completingTask.id)
-      await logActivity('Completed task', 'task', completingTask?.title, completionComment)
-      setShowCompleteModal(false)
-      setCompletingTask(null)
-      setCompletionComment('')
-      setCompletionImages([])
-      fetchTasks()
-    }
+    
+    // 1. Save the completion record
+    await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        action: 'complete', 
+        payload: { task_id: completingTask.id, title: completingTask.title, comment: completionComment, images: completionImages } 
+      })
+    })
+
+    // 2. Mark the actual task as done
+    await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'toggle_done', payload: { id: completingTask.id, is_done: true, title: completingTask.title } })
+    })
+
+    setShowCompleteModal(false)
+    setCompletingTask(null)
+    setCompletionComment('')
+    setCompletionImages([])
+    fetchTasks()
   }
+
   const handleReopen = async (id) => {
-    await supabase.from('tasks').update({ is_done: false }).eq('id', id)
+    const task = tasks.find(t => t.id === id)
+    await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'toggle_done', payload: { id, is_done: false, title: task?.title } })
+    })
     fetchTasks()
   }
 

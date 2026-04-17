@@ -1,34 +1,34 @@
-import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
+// app/api/send-reminder/route.js  (REPLACE existing file)
+// Called by QStash scheduler — not by the browser directly.
+// Secret moved from hardcoded string to environment variable.
 
-// Remove the 'const resend...' line from up here!
+import { NextResponse } from 'next/server'
+import { Resend } from 'resend'
 
 export async function POST(request) {
-  // Move it inside the function here:
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = new Resend(process.env.RESEND_API_KEY)
 
-  // Simple security check so random people can't trigger your emails
-  const url = new URL(request.url);
-  if (url.searchParams.get('secret') !== 'HTU_SECURE_123') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Verify QStash secret — now read from env, not hardcoded
+  const url = new URL(request.url)
+  const secret = process.env.REMINDER_SECRET
+  if (!secret || url.searchParams.get('secret') !== secret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await request.json();
-  const { school_name, visit_date, visit_time, reminder_time } = body;
+  const body = await request.json()
+  const { school_name, visit_date, visit_time, reminder_time } = body
 
-  // Format the reminder text
-  let notice = "";
-  if (reminder_time == "30") notice = "in 30 Minutes";
-  else if (reminder_time == "60") notice = "in 1 Hour";
-  else if (reminder_time == "120") notice = "in 2 Hours";
-  else if (reminder_time == "1440") notice = "Tomorrow";
-  else if (reminder_time == "2880") notice = "in 2 Days";
-  else if (reminder_time == "10080") notice = "in 1 Week";
+  let notice = ''
+  if (reminder_time == '30') notice = 'in 30 Minutes'
+  else if (reminder_time == '60') notice = 'in 1 Hour'
+  else if (reminder_time == '120') notice = 'in 2 Hours'
+  else if (reminder_time == '1440') notice = 'Tomorrow'
+  else if (reminder_time == '2880') notice = 'in 2 Days'
+  else if (reminder_time == '10080') notice = 'in 1 Week'
 
   try {
-    console.log("SENDING FROM:", 'HTU CRM <reminder@htucrm.com>');
-const result = await resend.emails.send({      
-  from: 'HTU CRM <reminder@htucrm.com>', 
+    await resend.emails.send({
+      from: 'HTU CRM <reminder@htucrm.com>',
       to: 'dalia.zawaideh@htu.edu.jo',
       subject: `🚨 Reminder: Visit at ${school_name} ${notice}!`,
       html: `
@@ -44,12 +44,10 @@ const result = await resend.emails.send({
           <p>Good luck!</p>
         </div>
       `,
-    });
-    console.log("RESEND RESULT:", result);
-
-    return NextResponse.json({ success: true });
+    })
+    return NextResponse.json({ success: true })
   } catch (error) {
-  console.error("RESEND ERROR:", error);
-  return NextResponse.json({ error: error.message }, { status: 500 });
-}
+    console.error('RESEND ERROR:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 }

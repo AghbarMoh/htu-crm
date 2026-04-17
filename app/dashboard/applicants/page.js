@@ -1,7 +1,5 @@
 'use client'
-import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
 import { Plus, Pencil, Trash2, Upload, Search, Archive } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -19,7 +17,7 @@ export default function ApplicantsPage() {
   const [archiveLabel, setArchiveLabel] = useState('')
   const [archiving, setArchiving] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  
 
   const majors = ['Energy Engineering', 'Electrical Engineering', 'Game Design and Development', 'Architectural Engineering', 'Cyber Security', 'Computer Science', 'Data Science and AI', 'Industrial Engineering']
 
@@ -30,26 +28,41 @@ export default function ApplicantsPage() {
 
   const fetchApplicants = async () => {
     setLoading(true)
-   const { data, error } = await supabase.from('applicants').select('*').eq('is_archived', false).order('imported_at', { ascending: false })
-    if (!error) setApplicants(data)
-    setLoading(false)
+    try {
+      const res = await fetch('/api/applicants?archived=false')
+      const json = await res.json()
+      if (json.data) setApplicants(json.data)
+    } catch (error) {
+      console.error("Failed to fetch applicants:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const runCrossReference = async () => {
+    await fetch('/api/applicants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'cross_reference', payload: {} })
+    })
+    fetchApplicants()
   }
 
   const handleSubmit = async () => {
     if (!form.full_name) { alert('Please fill in student name'); return }
-    if (editingApplicant) {
-      const { error } = await supabase.from('applicants').update(form).eq('id', editingApplicant.id)
-      if (!error) {
-        await logActivity('Edited applicant', 'applicant', form.full_name, 'Updated applicant details')
-        fetchApplicants(); setShowForm(false); setEditingApplicant(null); setForm(emptyForm)
-      }
-    } else {
-      const { error } = await supabase.from('applicants').insert([form])
-      if (!error) {
-        await logActivity('Added applicant', 'applicant', form.full_name, 'New applicant added manually')
-        fetchApplicants(); setShowForm(false); setForm(emptyForm)
-      }
-    }
+    const action = editingApplicant ? 'update' : 'insert'
+    const payload = editingApplicant ? { ...form, id: editingApplicant.id } : form
+    
+    await fetch('/api/applicants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, payload })
+    })
+    
+    fetchApplicants()
+    setShowForm(false)
+    setEditingApplicant(null)
+    setForm(emptyForm)
   }
 
   const handleEdit = (applicant) => {
@@ -69,20 +82,22 @@ export default function ApplicantsPage() {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure?')) return
     const applicant = applicants.find(a => a.id === id)
-    const { error } = await supabase.from('applicants').delete().eq('id', id)
-    if (!error) {
-      await logActivity('Deleted applicant', 'applicant', applicant?.full_name, 'Applicant removed')
-      fetchApplicants()
-    }
+    await fetch('/api/applicants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', payload: { id, full_name: applicant?.full_name } })
+    })
+    fetchApplicants()
   }
 
   const handleStatusChange = async (id, newStatus) => {
     const applicant = applicants.find(a => a.id === id)
-    const { error } = await supabase.from('applicants').update({ status: newStatus }).eq('id', id)
-    if (!error) {
-      await logActivity('Changed status', 'applicant', applicant?.full_name, 'Status changed to ' + newStatus)
-      fetchApplicants()
-    }
+    await fetch('/api/applicants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'status', payload: { id, status: newStatus, full_name: applicant?.full_name } })
+    })
+    fetchApplicants()
   }
 
   const parseExcelDate = (val) => {
@@ -120,13 +135,21 @@ export default function ApplicantsPage() {
         status: String(row['Paid'] || '').toUpperCase() === 'YES' ? 'green' : 'red',
       })).filter(a => a.full_name)
       if (applicants.length === 0) { alert('No valid applicants found'); setImporting(false); e.target.value = ''; return }
-      const { error } = await supabase.from('applicants').insert(applicants)
-     if (!error) {
-  await logActivity('Imported applicants', 'applicant', file.name, 'Imported ' + applicants.length + ' applicants from Excel')
-  alert('Successfully imported ' + applicants.length + ' applicants')
-  fetchApplicants(); runCrossReference()
-}
-      else alert('Error: ' + error.message)
+      
+      const res = await fetch('/api/applicants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'import', payload: { rows: applicants, filename: file.name } })
+      })
+      const json = await res.json()
+      
+      if (json.success) {
+        alert('Successfully imported ' + applicants.length + ' applicants')
+        fetchApplicants()
+        runCrossReference()
+      } else {
+        alert('Error: ' + json.error)
+      }
       setImporting(false); e.target.value = ''
     }
     reader.readAsArrayBuffer(file)
@@ -136,69 +159,24 @@ export default function ApplicantsPage() {
     if (!archiveLabel) { alert('Please enter a label for this archive'); return }
     setArchiving(true)
 
-    const today = new Date().toISOString()
-    const { error } = await supabase
-      .from('applicants')
-      .update({ is_archived: true, archive_label: archiveLabel, archived_at: today })
-      .eq('is_archived', false)
+    const res = await fetch('/api/applicants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'archive', payload: { label: archiveLabel, count: applicants.length } })
+    })
+    const json = await res.json()
 
-   if (!error) {
-      await logActivity('Archived applicants', 'applicant', archiveLabel, 'Archived ' + applicants.length + ' applicants')
+    if (json.success) {
       alert('Successfully archived ' + applicants.length + ' applicants')
       setShowArchiveModal(false)
       setArchiveLabel('')
       fetchApplicants()
-    }else {
-      alert('Error archiving: ' + error.message)
+    } else {
+      alert('Error archiving: ' + json.error)
     }
     setArchiving(false)
   }
 
-  const runCrossReference = async () => {
-    const { data: visitStudents } = await supabase.from('visit_students').select('id, full_name, phone, email')
-    const { data: currentApplicants } = await supabase.from('applicants').select('id, full_name, phone, email')
-    if (!visitStudents || !currentApplicants) return
-    for (const vs of visitStudents) {
-      const match = currentApplicants.find(a => {
-        // 1. Clean names: lowercase and remove all spaces
-        const cleanAppName = a.full_name?.toLowerCase().replace(/\s+/g, '');
-        const cleanVisitName = vs.full_name?.toLowerCase().replace(/\s+/g, '');
-        
-        // 2. Check each condition individually
-        const isNameMatch = cleanAppName && cleanVisitName && cleanAppName === cleanVisitName;
-        const isEmailMatch = a.email && vs.email && a.email.toLowerCase() === vs.email.toLowerCase();
-        const isPhoneMatch = a.phone && vs.phone && a.phone === vs.phone;
-
-        // 3. Return true if ANY condition matches (OR logic)
-        return isNameMatch || isEmailMatch || isPhoneMatch;
-      })
-      if (match) {
-        await supabase.from('matches').upsert({ visit_student_id: vs.id, applicant_name: match.full_name, applicant_email: match.email, applicant_phone: match.phone }, { onConflict: 'visit_student_id' })
-        await supabase.from('visit_students').update({ is_matched: true, matched_applicant_id: match.id }).eq('id', vs.id)
-        await supabase.from('applicants').update({ is_matched: true, matched_visit_student_id: vs.id }).eq('id', match.id)
-      }
-    }
-    const { data: savedMatches } = await supabase.from('matches').select('*')
-    if (savedMatches) {
-      for (const m of savedMatches) {
-       const applicant = currentApplicants.find(a => {
-            // 1. Clean names: lowercase and remove all spaces
-            const cleanAppName = a.full_name?.toLowerCase().replace(/\s+/g, '');
-            const cleanMatchName = m.applicant_name?.toLowerCase().replace(/\s+/g, '');
-            
-            // 2. Check each condition individually
-            const isNameMatch = cleanAppName && cleanMatchName && cleanAppName === cleanMatchName;
-            const isEmailMatch = a.email && m.applicant_email && a.email.toLowerCase() === m.applicant_email.toLowerCase();
-            const isPhoneMatch = a.phone && m.applicant_phone && a.phone === m.applicant_phone;
-
-            // 3. Return true if ANY condition matches (OR logic)
-            return isNameMatch || isEmailMatch || isPhoneMatch;
-          })
-        if (applicant) await supabase.from('applicants').update({ is_matched: true, matched_visit_student_id: m.visit_student_id }).eq('id', applicant.id)
-      }
-    }
-    fetchApplicants()
-  }
 
   const nationalities = [...new Set(applicants.map(a => a.nationality).filter(Boolean))].sort()
 

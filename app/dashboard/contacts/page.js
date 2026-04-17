@@ -1,7 +1,5 @@
 'use client'
-import { logActivity } from '@/lib/logger'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
 import { Plus, Pencil, Trash2, Mail, Phone, FileText } from 'lucide-react'
 
 
@@ -11,7 +9,7 @@ export default function ContactsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingContact, setEditingContact] = useState(null)
   const [filterRole, setFilterRole] = useState('all')
-  const supabase = createClient()
+  
 
   const roles = ['Counselor', 'Manager', 'Ministry', 'Other']
   const emptyForm = { full_name: '', role: 'Counselor', school_name: '', email: '', phone: '', notes: '' }
@@ -21,25 +19,41 @@ export default function ContactsPage() {
 
   const fetchContacts = async () => {
     setLoading(true)
-    const { data, error } = await supabase.from('contacts').select('*').order('created_at', { ascending: false })
-    if (!error) setContacts(data)
-    setLoading(false)
+    try {
+      const res = await fetch('/api/contacts')
+      const json = await res.json()
+      if (json.data) setContacts(json.data)
+    } catch (error) {
+      console.error("Failed to fetch contacts:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSubmit = async () => {
     if (!form.full_name) { alert('Please fill in contact name'); return }
-    if (editingContact) {
-      const { error } = await supabase.from('contacts').update(form).eq('id', editingContact.id)
-      if (!error) {
-        await logActivity('Edited contact', 'contact', form.full_name, 'Updated contact details')
-        fetchContacts(); setShowForm(false); setEditingContact(null); setForm(emptyForm)
+    
+    const action = editingContact ? 'update' : 'insert'
+    const payload = editingContact ? { ...form, id: editingContact.id } : form
+
+    try {
+      const res = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, payload })
+      })
+      const json = await res.json()
+      
+      if (json.success) {
+        fetchContacts()
+        setShowForm(false)
+        setEditingContact(null)
+        setForm(emptyForm)
+      } else {
+        alert('Error saving contact: ' + json.error)
       }
-    } else {
-      const { error } = await supabase.from('contacts').insert([form])
-      if (!error) {
-        await logActivity('Added contact', 'contact', form.full_name, 'New contact added — ' + form.role)
-        fetchContacts(); setShowForm(false); setForm(emptyForm)
-      }
+    } catch (error) {
+      console.error("Failed to save contact:", error)
     }
   }
 
@@ -52,10 +66,22 @@ export default function ContactsPage() {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure?')) return
     const contact = contacts.find(c => c.id === id)
-    const { error } = await supabase.from('contacts').delete().eq('id', id)
-    if (!error) {
-      await logActivity('Deleted contact', 'contact', contact?.full_name, 'Contact removed')
-      fetchContacts()
+    
+    try {
+      const res = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', payload: { id, full_name: contact?.full_name } })
+      })
+      const json = await res.json()
+      
+      if (json.success) {
+        fetchContacts()
+      } else {
+        alert("Failed to delete contact: " + json.error)
+      }
+    } catch (error) {
+      console.error("Failed to delete contact:", error)
     }
   }
   const generateWord = async () => {
