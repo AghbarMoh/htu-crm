@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase' // <-- Add this!
 
 import {
   LayoutDashboard, School, Users, ClipboardList, BookUser,
@@ -26,10 +27,11 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const supabase = createClient() // <-- Add this!
   
-
   const handleSignOut = async () => {
     await supabase.auth.signOut()
+    router.refresh() // <-- Add this to clear Next.js client cache!
     router.push('/login')
   }
 

@@ -1,0 +1,118 @@
+Date : 2026-04-17 17:35:25
+Directory : c:\Users\ASUS\Desktop\htu-crm
+Total : 51 files,  13323 codes, 131 comments, 687 blanks, all 14141 lines
+
+Languages
++--------------------+------------+------------+------------+------------+------------+
+| language           | files      | code       | comment    | blank      | total      |
++--------------------+------------+------------+------------+------------+------------+
+| JSON               |          2 |      7,829 |          0 |          2 |      7,831 |
+| JavaScript         |         41 |      5,022 |        112 |        587 |      5,721 |
+| PostCSS            |          1 |        437 |         19 |         83 |        539 |
+| Markdown           |          1 |         23 |          0 |         14 |         37 |
+| JSON with Comments |          1 |          7 |          0 |          1 |          8 |
+| XML                |          5 |          5 |          0 |          0 |          5 |
++--------------------+------------+------------+------------+------------+------------+
+
+Directories
++--------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                               | files      | code       | comment    | blank      | total      |
++--------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                  |         51 |     13,323 |        131 |        687 |     14,141 |
+| . (Files)                                                          |          8 |      7,913 |          4 |         30 |      7,947 |
+| app                                                                |         32 |      5,119 |        109 |        616 |      5,844 |
+| app (Files)                                                        |          3 |        462 |         19 |         88 |        569 |
+| app\api                                                            |         15 |        872 |         65 |        159 |      1,096 |
+| app\api\activity                                                   |          1 |         49 |          7 |         15 |         71 |
+| app\api\agent                                                      |          1 |         43 |          3 |          7 |         53 |
+| app\api\agent\get-visits                                           |          1 |         43 |          3 |          7 |         53 |
+| app\api\analytics                                                  |          1 |         24 |          2 |          5 |         31 |
+| app\api\applicants                                                 |          1 |        123 |          9 |         20 |        152 |
+| app\api\chat                                                       |          1 |        187 |          5 |         15 |        207 |
+| app\api\contacts                                                   |          1 |         42 |          3 |         10 |         55 |
+| app\api\dashboard                                                  |          1 |         39 |          0 |          4 |         43 |
+| app\api\messaging                                                  |          1 |         31 |          2 |          8 |         41 |
+| app\api\schedule-reminder                                          |          1 |         50 |          7 |         15 |         72 |
+| app\api\send-reminder                                              |          1 |         43 |          4 |          6 |         53 |
+| app\api\storage                                                    |          1 |         22 |          4 |          9 |         35 |
+| app\api\submit-student                                             |          1 |         34 |          4 |          7 |         45 |
+| app\api\tasks                                                      |          1 |         67 |          3 |         13 |         83 |
+| app\api\visit-students                                             |          1 |         49 |          3 |         10 |         62 |
+| app\api\visits                                                     |          1 |         69 |          9 |         15 |         93 |
+| app\apply                                                          |          1 |        144 |          1 |         21 |        166 |
+| app\apply\[visit_id]                                               |          1 |        144 |          1 |         21 |        166 |
+| app\dashboard                                                      |         12 |      3,258 |         24 |        323 |      3,605 |
+| app\dashboard (Files)                                              |          2 |        405 |          1 |         37 |        443 |
+| app\dashboard\activity                                             |          1 |        169 |          3 |         18 |        190 |
+| app\dashboard\analytics                                            |          1 |        262 |          9 |         39 |        310 |
+| app\dashboard\applicants                                           |          1 |        400 |          0 |         30 |        430 |
+| app\dashboard\archive                                              |          1 |        170 |          2 |         16 |        188 |
+| app\dashboard\contacts                                             |          1 |        270 |          0 |         24 |        294 |
+| app\dashboard\messaging                                            |          1 |        344 |          0 |         28 |        372 |
+| app\dashboard\school-visits                                        |          1 |        535 |          3 |         59 |        597 |
+| app\dashboard\settings                                             |          1 |        129 |          2 |         12 |        143 |
+| app\dashboard\tasks                                                |          1 |        292 |          4 |         30 |        326 |
+| app\dashboard\visit-students                                       |          1 |        282 |          0 |         30 |        312 |
+| app\login                                                          |          1 |        383 |          0 |         25 |        408 |
+| components                                                         |          2 |        216 |          5 |         28 |        249 |
+| lib                                                                |          4 |         70 |         13 |         13 |         96 |
+| public                                                             |          5 |          5 |          0 |          0 |          5 |
++--------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++--------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| filename                                                           | language           | code       | comment    | blank      | total      |
++--------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| c:\Users\ASUS\Desktop\htu-crm\README.md                            | Markdown           |         23 |          0 |         14 |         37 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\activity\route.js            | JavaScript         |         49 |          7 |         15 |         71 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\agent\get-visits\route.js    | JavaScript         |         43 |          3 |          7 |         53 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\analytics\route.js           | JavaScript         |         24 |          2 |          5 |         31 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\applicants\route.js          | JavaScript         |        123 |          9 |         20 |        152 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\chat\route.js                | JavaScript         |        187 |          5 |         15 |        207 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\contacts\route.js            | JavaScript         |         42 |          3 |         10 |         55 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\dashboard\route.js           | JavaScript         |         39 |          0 |          4 |         43 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\messaging\route.js           | JavaScript         |         31 |          2 |          8 |         41 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\schedule-reminder\route.js   | JavaScript         |         50 |          7 |         15 |         72 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\send-reminder\route.js       | JavaScript         |         43 |          4 |          6 |         53 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\storage\route.js             | JavaScript         |         22 |          4 |          9 |         35 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\submit-student\route.js      | JavaScript         |         34 |          4 |          7 |         45 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\tasks\route.js               | JavaScript         |         67 |          3 |         13 |         83 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\visit-students\route.js      | JavaScript         |         49 |          3 |         10 |         62 |
+| c:\Users\ASUS\Desktop\htu-crm\app\api\visits\route.js              | JavaScript         |         69 |          9 |         15 |         93 |
+| c:\Users\ASUS\Desktop\htu-crm\app\apply\[visit_id]\page.js         | JavaScript         |        144 |          1 |         21 |        166 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\activity\page.js       | JavaScript         |        169 |          3 |         18 |        190 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\analytics\page.js      | JavaScript         |        262 |          9 |         39 |        310 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\applicants\page.js     | JavaScript         |        400 |          0 |         30 |        430 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\archive\page.js        | JavaScript         |        170 |          2 |         16 |        188 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\contacts\page.js       | JavaScript         |        270 |          0 |         24 |        294 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\layout.js              | JavaScript         |         11 |          0 |          2 |         13 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\messaging\page.js      | JavaScript         |        344 |          0 |         28 |        372 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\page.js                | JavaScript         |        394 |          1 |         35 |        430 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\school-visits\page.js  | JavaScript         |        535 |          3 |         59 |        597 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\settings\page.js       | JavaScript         |        129 |          2 |         12 |        143 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\tasks\page.js          | JavaScript         |        292 |          4 |         30 |        326 |
+| c:\Users\ASUS\Desktop\htu-crm\app\dashboard\visit-students\page.js | JavaScript         |        282 |          0 |         30 |        312 |
+| c:\Users\ASUS\Desktop\htu-crm\app\globals.css                      | PostCSS            |        437 |         19 |         83 |        539 |
+| c:\Users\ASUS\Desktop\htu-crm\app\layout.js                        | JavaScript         |         21 |          0 |          4 |         25 |
+| c:\Users\ASUS\Desktop\htu-crm\app\login\page.js                    | JavaScript         |        383 |          0 |         25 |        408 |
+| c:\Users\ASUS\Desktop\htu-crm\app\page.js                          | JavaScript         |          4 |          0 |          1 |          5 |
+| c:\Users\ASUS\Desktop\htu-crm\components\DaliaBot.js               | JavaScript         |        150 |          5 |         17 |        172 |
+| c:\Users\ASUS\Desktop\htu-crm\components\Sidebar.js                | JavaScript         |         66 |          0 |         11 |         77 |
+| c:\Users\ASUS\Desktop\htu-crm\eslint.config.mjs                    | JavaScript         |         12 |          2 |          3 |         17 |
+| c:\Users\ASUS\Desktop\htu-crm\jsconfig.json                        | JSON with Comments |          7 |          0 |          1 |          8 |
+| c:\Users\ASUS\Desktop\htu-crm\lib\auth-guard.js                    | JavaScript         |         33 |          4 |          6 |         43 |
+| c:\Users\ASUS\Desktop\htu-crm\lib\logger.js                        | JavaScript         |         14 |          4 |          2 |         20 |
+| c:\Users\ASUS\Desktop\htu-crm\lib\supabase-server.js               | JavaScript         |         16 |          5 |          4 |         25 |
+| c:\Users\ASUS\Desktop\htu-crm\lib\supabase.js                      | JavaScript         |          7 |          0 |          1 |          8 |
+| c:\Users\ASUS\Desktop\htu-crm\middleware.js                        | JavaScript         |         33 |          0 |          6 |         39 |
+| c:\Users\ASUS\Desktop\htu-crm\next.config.mjs                      | JavaScript         |          3 |          2 |          2 |          7 |
+| c:\Users\ASUS\Desktop\htu-crm\package-lock.json                    | JSON               |      7,793 |          0 |          1 |      7,794 |
+| c:\Users\ASUS\Desktop\htu-crm\package.json                         | JSON               |         36 |          0 |          1 |         37 |
+| c:\Users\ASUS\Desktop\htu-crm\postcss.config.mjs                   | JavaScript         |          6 |          0 |          2 |          8 |
+| c:\Users\ASUS\Desktop\htu-crm\public\file.svg                      | XML                |          1 |          0 |          0 |          1 |
+| c:\Users\ASUS\Desktop\htu-crm\public\globe.svg                     | XML                |          1 |          0 |          0 |          1 |
+| c:\Users\ASUS\Desktop\htu-crm\public\next.svg                      | XML                |          1 |          0 |          0 |          1 |
+| c:\Users\ASUS\Desktop\htu-crm\public\vercel.svg                    | XML                |          1 |          0 |          0 |          1 |
+| c:\Users\ASUS\Desktop\htu-crm\public\window.svg                    | XML                |          1 |          0 |          0 |          1 |
+| Total                                                              |                    |     13,323 |        131 |        687 |     14,141 |
++--------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
