@@ -86,7 +86,7 @@ export default function DashboardPage() {
   const [selectedDay, setSelectedDay] = useState(null)
   const [chatMessages, setChatMessages] = useState([{
     role: 'assistant',
-    text: "Hi! I'm your CRM Assistant. I can help you manage <b>school visits</b>, <b>contacts</b>, and answer questions about your schedule. I speak both <b>English & Arabic</b> — what do you need?",
+    text: "Hi Dalia, I'm your CRM Assistant. I can help you manage <b>school visits</b>, <b>contacts</b>, and answer questions about your schedule. I speak both <b>English & Arabic</b> — what do you need?",
   }])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
