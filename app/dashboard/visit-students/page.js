@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, Upload } from 'lucide-react'
 export default function VisitStudentsPage() {
   const [students, setStudents] = useState([])
   const [visits, setVisits] = useState([])
+  const [completions, setCompletions] = useState({}) // Add this state
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingStudent, setEditingStudent] = useState(null)
@@ -36,6 +37,13 @@ export default function VisitStudentsPage() {
       const json = await res.json()
 
       if (json.visits) setVisits(json.visits)
+      
+      // Store completions in a map for easy lookup
+      if (json.completions) {
+        const map = {}
+        json.completions.forEach(c => { map[c.visit_id] = c })
+        setCompletions(map)
+      }
 
       if (json.students && json.visits) {
         const combinedData = json.students.map(student => {
@@ -137,13 +145,22 @@ export default function VisitStudentsPage() {
   }
 
   const filteredStudents = filterVisit === 'all' ? students : students.filter(s => s.visit_id === filterVisit)
+  
+  // Create a list of only completed visits for our dropdowns
+  // Now we check if the visit ID exists in our completions map
+  const completedVisits = visits.filter(v => completions[v.id])
+
+  // This ensures the student's current school shows up in the Edit box 
+  // even if it isn't "Completed" yet.
+  const modalDropdownVisits = editingStudent 
+    ? visits.filter(v => completions[v.id] || v.id === editingStudent.visit_id)
+    : completedVisits
 
   const s = {
     card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' },
     th: { textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(255,255,255,0.07)' },
     td: { padding: '12px 16px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    input: { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#ffffff', outline: 'none', boxSizing: 'border-box' },
-    label: { display: 'block', fontSize: '12px', fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' },
+input: { width: '100%', backgroundColor: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#ffffff', outline: 'none', boxSizing: 'border-box' },    label: { display: 'block', fontSize: '12px', fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' },
     modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, backdropFilter: 'blur(4px)' },
     modalCard: { background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '440px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', maxHeight: '90vh', overflowY: 'auto' },
   }
@@ -156,10 +173,14 @@ export default function VisitStudentsPage() {
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>Students collected during school visits</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <select value={importVisitId} onChange={(e) => setImportVisitId(e.target.value)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 14px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', outline: 'none' }}>
-            <option value="">Select visit to import into</option>
-            {visits.map(v => <option key={v.id} value={v.id}>{v.school_name} — {v.visit_date}</option>)}
-          </select>
+          <select value={importVisitId} onChange={(e) => setImportVisitId(e.target.value)} style={{ backgroundColor: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 14px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', outline: 'none' }}>
+  <option value="" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>Select visit to import into</option>
+  {completedVisits.map(v => (
+    <option key={v.id} value={v.id} style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>
+      {v.school_name} — {v.visit_date}
+    </option>
+  ))}
+</select>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '10px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', color: '#10b981', cursor: 'pointer' }}>
             <Upload size={14} />
             {importing ? 'Importing...' : 'Import Excel'}
@@ -173,33 +194,38 @@ export default function VisitStudentsPage() {
       </div>
 
       <div style={{ marginBottom: '16px' }}>
-        <select value={filterVisit} onChange={(e) => setFilterVisit(e.target.value)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '8px 14px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', outline: 'none' }}>
-          <option value="all">All School Visits</option>
-          {visits.map(v => <option key={v.id} value={v.id}>{v.school_name} — {v.visit_date}</option>)}
-        </select>
+        <select value={form.visit_id} onChange={(e) => setForm({ ...form, visit_id: e.target.value })} style={s.input}>
+  <option value="" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>Select a visit</option>
+  {completedVisits.map(v => (
+    <option key={v.id} value={v.id} style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>
+      {v.school_name} — {v.visit_date}
+    </option>
+  ))}
+</select>
       </div>
 
       <div style={s.card}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr>
-              {['Full Name', 'School Visit', 'Email', 'Phone', 'Grade', 'Nationality', 'Major Interested', 'Certificate', 'Matched', 'Actions'].map(h => (
-                <th key={h} style={s.th}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={10} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
-            ) : filteredStudents.length === 0 ? (
-              <tr><td colSpan={10} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No students found</td></tr>
-            ) : (
-              filteredStudents.map((student) => (
-                <tr key={student.id}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{student.full_name}</td>
+  <tr>
+    {['#', 'Full Name', 'School Visit', 'Email', 'Phone', 'Grade', 'Nationality', 'Major Interested', 'Certificate', 'Matched', 'Actions'].map(h => (
+      <th key={h} style={s.th}>{h}</th>
+    ))}
+  </tr>
+</thead>
+<tbody>
+  {loading ? (
+    <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
+  ) : filteredStudents.length === 0 ? (
+    <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No students found</td></tr>
+  ) : (
+              filteredStudents.map((student, i) => (
+  <tr key={student.id}
+    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+  >
+    <td style={{ ...s.td, width: '40px', color: 'rgba(255,255,255,0.3)' }}>{i + 1}</td>
+    <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{student.full_name}</td>
                   {/* Safely print the mapped school name! */}
                   <td style={s.td}>{student.school_visits?.school_name}</td>
                   <td style={s.td}>{student.email || '-'}</td>
@@ -246,9 +272,13 @@ export default function VisitStudentsPage() {
               <div>
                 <label style={s.label}>School Visit *</label>
                 <select value={form.visit_id} onChange={(e) => setForm({ ...form, visit_id: e.target.value })} style={s.input}>
-                  <option value="">Select a visit</option>
-                  {visits.map(v => <option key={v.id} value={v.id}>{v.school_name} — {v.visit_date}</option>)}
-                </select>
+  <option value="" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>Select a visit</option>
+  {modalDropdownVisits.map(v => (
+    <option key={v.id} value={v.id} style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>
+      {v.school_name} — {v.visit_date} {!completions[v.id] && '(Pending)'}
+    </option>
+  ))}
+</select>
               </div>
               
               <div><label style={s.label}>Full Name *</label><input type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="e.g. Mohammad Aghbar" style={s.input} /></div>

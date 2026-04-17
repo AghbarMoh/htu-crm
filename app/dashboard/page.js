@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   School, Users, ClipboardList, BookUser, CheckCircle,
   ChevronLeft, ChevronRight, Send, Bot, TrendingUp, 
-  Calendar, Clock, MapPin, Heart
+  Calendar, Clock, MapPin, Heart, Bell
 } from 'lucide-react'
 
 function useCountUp(target, duration = 800) {
@@ -70,11 +70,11 @@ function StatCard({ label, value, icon: Icon, accent, href }) {
 }
 
 const QUICK = [
-  { label: '➕ Add Visit', text: 'Add a visit: [School Name], Type: [Type], School Type: [School Type], City: [City], Date: [Date], Time: [Time], Status: [Status], Companion: [Companion].' },
-  { label: '👤 Add Contact', text: 'Add contact: [Full Name], Role: [Role], School: [School], Email: [Email], Phone: [Phone], Notes: [Notes].' },
+  { label: '➕ Add Visit', text: 'Add a visit: ' },
+  { label: '👤 Add Contact', text: 'Add contact: ' },
   { label: '✏️ Edit Visit', text: 'Change the time for my visit to [School Name] to [New Time].' },
   { label: '🗑️ Delete Visit', text: 'Cancel my visit to [School Name].' },
-  { label: '📅 Check Date', text: 'What visits do I have scheduled for [Date], and did I complete any?' },
+  { label: '📅 Check Date', text: 'What visits do I have scheduled for , and did I complete any?' },
 ]
 
 export default function DashboardPage() {
@@ -87,7 +87,7 @@ export default function DashboardPage() {
   const [selectedDay, setSelectedDay] = useState(null)
   const [chatMessages, setChatMessages] = useState([{
     role: 'assistant',
-    text: "Hi Dalia, I'm your CRM Assistant. I can help you manage <b>school visits</b>, <b>contacts</b>, and answer questions about your schedule. I speak both <b>English & Arabic</b> — what do you need?",
+    text: `Hi Dalia, I'm your CRM Assistant. 👋<br/><br/>I can help you manage <b>school visits</b>, <b>contacts</b>, and your <b>schedule</b>.<br/><br/><div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; border-left: 3px solid #6366f1;"><b>⚠️ Quick Reminders:</b><br/>• <b>Add Visit:</b> SchoolName, Type, Visit Type, Date, Time, City, Companion.<br/>• <b>Add Contact:</b> Name, Role, School, Email, Phone.<br/>• <b>Edit/Delete:</b> Just refer to the <b>ID number</b> (e.g., <i>"Delete visit 12"</i>).</div><br/>If you don't know the ID, just ask me to <b>list</b> your visits or contacts first!`
   }])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
@@ -146,6 +146,54 @@ export default function DashboardPage() {
     fetchDailyTip()
   }, [])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages])
+// --- Notification State ---
+  const [notifications, setNotifications] = useState([])
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  // A robust time formatter that ignores timezone bugs
+  const formatNotifTime = (timestamp) => {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diff = now - date
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    if (minutes < 1) return 'Just now'
+    if (minutes < 60) return minutes + 'm ago'
+    if (hours < 24) return hours + 'h ago'
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  // Fetch Notifications on load
+  // 1. Define the function so it's accessible everywhere
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch('/api/activity')
+      const json = await res.json()
+      if (json.data) {
+        const lastRead = localStorage.getItem('htu_notif_read') || '1970-01-01T00:00:00.000Z'
+        const newNotifs = json.data.filter(n => new Date(n.created_at) > new Date(lastRead))
+        setNotifications(newNotifs.slice(0, 10))
+        setUnreadCount(newNotifs.length)
+      }
+    } catch (error) {
+      console.error("Failed to fetch notifications", error)
+    }
+  }
+
+  // 2. Call it when the page first loads
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  // The NEW "Clear" function that empties the list
+  const handleClearNotifications = () => {
+    localStorage.setItem('htu_notif_read', new Date().toISOString())
+    setNotifications([]) // Instantly empties the dropdown UI
+    setUnreadCount(0)
+    setShowNotifications(false) 
+  }
+
 
   const fetchDashboardData = async () => {
     setLoading(true)
@@ -191,6 +239,10 @@ export default function DashboardPage() {
       setChatMessages(prev => [...prev, { role: 'assistant', text: "Connection dropped. Try again!" }])
     } finally {
       setChatLoading(false)
+      // Give the database a half-second to breathe, then refresh the bell
+      setTimeout(() => {
+        fetchNotifications()
+      }, 500)
     }
   }
 
@@ -241,26 +293,100 @@ export default function DashboardPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
       {/* ── Header ── */}
-      <div>
-        <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          Good morning, {user?.full_name?.split(' ')[0] || 'Dalia'} 
-          <Heart size={20} color="#ef4444" fill="#ef4444" /> 
-        </h1>
-        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', margin: '0 0 12px 0' }}>
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
+      {/* ── Header Area ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        
+        {/* Left Side: Welcome & Tip */}
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            Good morning, {user?.full_name?.split(' ')[0] || 'Dalia'} 
+            <Heart size={20} color="#ef4444" fill="#ef4444" /> 
+          </h1>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', margin: '0 0 12px 0' }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
 
-        {/* Tip of the day section */}
-        {dailyTip && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '8px', borderLeft: '2px solid rgba(255,255,255,0.1)', width: 'fit-content' }}>
-            <span style={{ fontSize: '14px' }}>💡</span>
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0, fontStyle: 'italic' }}>
-              <span style={{ fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginRight: '4px' }}>Tip of the day:</span> 
-              {dailyTip}
-            </p>
-          </div>
-        )}
+          {dailyTip && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '8px', borderLeft: '2px solid rgba(255,255,255,0.1)', width: 'fit-content' }}>
+              <span style={{ fontSize: '14px' }}>💡</span>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0, fontStyle: 'italic' }}>
+                <span style={{ fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginRight: '4px' }}>Tip of the day:</span> 
+                {dailyTip}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Right Side: Notification Bell */}
+        <div style={{ position: 'relative' }}>
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            style={{ 
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', 
+              borderRadius: '12px', padding: '10px', cursor: 'pointer', position: 'relative',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}
+          >
+            <Bell size={20} color="#ffffff" />
+            
+            {/* The Red Badge */}
+            {unreadCount > 0 && (
+              <span style={{
+                position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', 
+                color: '#ffffff', fontSize: '10px', fontWeight: 'bold', width: '18px', height: '18px', 
+                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '2px solid #0f1115' // Matches your dark background
+              }}>
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* The Dropdown Menu */}
+          {showNotifications && (
+            <div style={{
+              position: 'absolute', top: '50px', right: '0', width: '320px', 
+              background: '#1a1d24', border: '1px solid rgba(255,255,255,0.1)', 
+              borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', zIndex: 50,
+              overflow: 'hidden'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <h3 style={{ margin: 0, fontSize: '14px', color: '#ffffff', fontWeight: '600' }}>Recent Activity</h3>
+                <button onClick={handleClearNotifications} style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
+                  Clear all
+                </button>
+              </div>
+              
+              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                {notifications.length === 0 ? (
+                  <p style={{ textAlign: 'center', padding: '20px', fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>No recent activity.</p>
+                ) : (
+                  notifications.map((notif, i) => (
+                    <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)', display: 'flex', gap: '12px' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: new Date(notif.created_at) > new Date(localStorage.getItem('htu_notif_read') || '1970') ? '#3b82f6' : 'transparent', marginTop: '6px', flexShrink: 0 }} />
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#ffffff' }}>
+                          <span style={{ fontWeight: '600' }}>{notif.action}</span> {notif.entity_name && `• ${notif.entity_name}`}
+                        </p>
+                        <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+                          {formatNotifTime(notif.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              
+              <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', textAlign: 'center' }}>
+                <Link href="/dashboard/activity" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', textDecoration: 'none' }}>
+                  View full activity log →
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+      
 
       {/* ── Stat Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>

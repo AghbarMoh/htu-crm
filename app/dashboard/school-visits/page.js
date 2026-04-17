@@ -346,7 +346,7 @@ export default function SchoolVisitsPage() {
     card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' },
     th: { textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(255,255,255,0.07)' },
     td: { padding: '12px 16px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    input: { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#ffffff', outline: 'none', boxSizing: 'border-box' },
+    input: { width: '100%', backgroundColor: '#1a1a2e', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#ffffff', outline: 'none', boxSizing: 'border-box' },
     label: { display: 'block', fontSize: '12px', fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' },
     modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, backdropFilter: 'blur(4px)' },
     modalCard: { background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '440px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', maxHeight: '90vh', overflowY: 'auto' },
@@ -385,14 +385,15 @@ export default function SchoolVisitsPage() {
       <div style={{ ...s.card, marginBottom: '32px' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr>{['School Name', 'Type', 'School Type', 'City', 'Date', 'Time', 'Status', 'Companion','Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
-          </thead>
-          <tbody>
-            {loading ? <tr><td colSpan={10} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>Loading...</td></tr> : 
-             pendingVisits.length === 0 ? <tr><td colSpan={10} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No pending visits</td></tr> : 
-             pendingVisits.map((visit) => (
-                <tr key={visit.id} style={{ transition: 'background 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                 <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{visit.school_name}</td>
+  <tr>{['#', 'School Name', 'Type', 'School Type', 'City', 'Date', 'Time', 'Status', 'Companion','Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+</thead>
+<tbody>
+  {loading ? <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>Loading...</td></tr> : 
+   pendingVisits.length === 0 ? <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No pending visits</td></tr> :
+             pendingVisits.map((visit, i) => (
+  <tr key={visit.id} style={{ transition: 'background 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+    <td style={{ ...s.td, width: '40px', color: 'rgba(255,255,255,0.3)' }}>{i + 1}</td>
+    <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{visit.school_name}</td>
                   <td style={s.td}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{visit.type}</span></td>
                   <td style={s.td}><span style={{ textTransform: 'capitalize' }}>{visit.private_or_public || '-'}</span></td>
                   <td style={s.td}>{visit.city || '-'}</td>
@@ -430,13 +431,14 @@ export default function SchoolVisitsPage() {
         <div style={{ ...s.card, opacity: 0.8 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['School Name', 'Type', 'School Type', 'Date','Companion', 'Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {completedVisits.length === 0 ? <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No completed visits yet</td></tr> : 
-               completedVisits.map((visit) => (
-                  <tr key={visit.id} style={{ background: 'rgba(16,185,129,0.02)' }}>
-                    <td style={{ ...s.td, color: '#ffffff', fontWeight: '500', textDecoration: 'line-through', opacity: 0.7 }}>{visit.school_name}</td>
+  <tr>{['#', 'School Name', 'Type', 'School Type', 'Date','Companion', 'Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+</thead>
+<tbody>
+  {completedVisits.length === 0 ? <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No completed visits yet</td></tr> :
+               completedVisits.map((visit, i) => (
+  <tr key={visit.id} style={{ background: 'rgba(16,185,129,0.02)' }}>
+    <td style={{ ...s.td, width: '40px', color: 'rgba(255,255,255,0.3)' }}>{i + 1}</td>
+    <td style={{ ...s.td, color: '#ffffff', fontWeight: '500', textDecoration: 'line-through', opacity: 0.7 }}>{visit.school_name}</td>
                     <td style={s.td}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{visit.type}</span></td>
                     <td style={s.td}><span style={{ textTransform: 'capitalize' }}>{visit.private_or_public || '-'}</span></td>
                     <td style={s.td}>{visit.visit_date}</td>
@@ -484,44 +486,52 @@ export default function SchoolVisitsPage() {
               <div>
                 <label style={s.label}>Type *</label>
                 <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={s.input}>
-                  <option value="School Tours">School Tours</option>
-                  <option value="School visits at HTU Campus">School visits at HTU Campus</option>
-                  <option value="School Fairs">School Fairs</option>
-                  <option value="Outreach fairs">Outreach fairs</option>
-                  <option value="Outreach School Tours">Outreach School Tours</option>
-                  <option value="Outreach Events">Outreach Events</option>
-                </select>
+  {[
+    "School Tours", "School visits at HTU Campus", "School Fairs", 
+    "Outreach fairs", "Outreach School Tours", "Outreach Events"
+  ].map(opt => (
+    <option key={opt} value={opt} style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>
+      {opt}
+    </option>
+  ))}
+</select>
               </div>
               <div>
-                <label style={s.label}>School Type *</label>
-                <select value={form.private_or_public} onChange={(e) => setForm({ ...form, private_or_public: e.target.value })} style={s.input}>
-                  <option value="private">Private</option>
-                  <option value="public">Public</option>
-                </select>
-              </div>
+  <label style={s.label}>School Type *</label>
+  <select value={form.private_or_public} onChange={(e) => setForm({ ...form, private_or_public: e.target.value })} style={s.input}>
+    <option value="private" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>Private</option>
+    <option value="public" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>Public</option>
+  </select>
+</div>
               <div>
                 <label style={s.label}>Companion</label>
                 <input type="text" value={form.companion} onChange={(e) => setForm({ ...form, companion: e.target.value })} placeholder="e.g. Aghbar" style={s.input} />
               </div>
               <div>
-                <label style={s.label}>Status (New/Repeated) *</label>
-                <select value={form.connection_status} onChange={(e) => setForm({ ...form, connection_status: e.target.value })} style={s.input}>
-                  <option value="New">New</option>
-                  <option value="Repeated">Repeated</option>
-                </select>
-              </div>
+  <label style={s.label}>Status (New/Repeated) *</label>
+  <select value={form.connection_status} onChange={(e) => setForm({ ...form, connection_status: e.target.value })} style={s.input}>
+    <option value="New" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>New</option>
+    <option value="Repeated" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>Repeated</option>
+  </select>
+</div>
               <div>
-                <label style={s.label}>Reminder Notice *</label>
-                <select value={form.reminder_time} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })} style={s.input}>
-                  <option value="none">No Reminder</option>
-                  <option value="30">30 Minutes Before</option>
-                  <option value="60">1 Hour Before</option>
-                  <option value="120">2 Hours Before</option>
-                  <option value="1440">1 Day Before</option>
-                  <option value="2880">2 Days Before</option>
-                  <option value="10080">1 Week Before</option>
-                </select>
-              </div>
+  <label style={s.label}>Reminder Notice *</label>
+  <select value={form.reminder_time} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })} style={s.input}>
+    {[
+      { val: 'none', lab: 'No Reminder' },
+      { val: '30', lab: '30 Minutes Before' },
+      { val: '60', lab: '1 Hour Before' },
+      { val: '120', lab: '2 Hours Before' },
+      { val: '1440', lab: '1 Day Before' },
+      { val: '2880', lab: '2 Days Before' },
+      { val: '10080', lab: '1 Week Before' }
+    ].map(r => (
+      <option key={r.val} value={r.val} style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>
+        {r.lab}
+      </option>
+    ))}
+  </select>
+</div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
               <button onClick={handleSubmit} style={{ flex: 1, background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>{editingVisit ? 'Save Changes' : 'Add Visit'}</button>

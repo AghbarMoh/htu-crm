@@ -18,11 +18,11 @@ export default function DaliaChatWidget() {
   const quickTemplates = [
     { 
       label: '➕ Add Visit', 
-      text: 'Add a visit: [School Name], Type: [Type], School Type: [School Type], City: [City], Date: [Date], Time: [Time], Status: [Status], Companion: [Companion].' 
+      text: 'Add a visit: .' 
     },
     { 
       label: '👤 Add Contact', 
-      text: 'Add contact: [Full Name], Role: [Role], School: [School], Email: [Email], Phone: [Phone], Notes: [Notes].' 
+      text: 'Add contact: .' 
     },
     { 
       label: '✏️ Edit Visit', 
@@ -30,11 +30,11 @@ export default function DaliaChatWidget() {
     },
     { 
       label: '🗑️ Delete Visit', 
-      text: 'Cancel my visit to [School Name].' 
+      text: 'Cancel my visit to .' 
     },
     { 
       label: '📅 Check Date', 
-      text: 'What visits do I have scheduled for [Date], and did I complete any?' 
+      text: 'What visits do I have scheduled for [], and did I complete any?' 
     }
   ];
 

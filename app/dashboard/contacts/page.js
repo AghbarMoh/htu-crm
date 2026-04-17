@@ -9,6 +9,7 @@ export default function ContactsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingContact, setEditingContact] = useState(null)
   const [filterRole, setFilterRole] = useState('all')
+  const [customRole, setCustomRole] = useState('') // <-- ADD THIS
   
 
   const roles = ['Counselor', 'Manager', 'Ministry', 'Other']
@@ -34,7 +35,10 @@ export default function ContactsPage() {
     if (!form.full_name) { alert('Please fill in contact name'); return }
     
     const action = editingContact ? 'update' : 'insert'
-    const payload = editingContact ? { ...form, id: editingContact.id } : form
+    const finalRole = form.role === 'Other' ? customRole : form.role
+    const payload = editingContact 
+      ? { ...form, role: finalRole, id: editingContact.id } 
+      : { ...form, role: finalRole }
 
     try {
       const res = await fetch('/api/contacts', {
@@ -140,7 +144,7 @@ export default function ContactsPage() {
     card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' },
     th: { textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(255,255,255,0.07)' },
     td: { padding: '12px 16px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    input: { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#ffffff', outline: 'none', boxSizing: 'border-box' },
+    input: { width: '100%', backgroundColor: '#1a1a2e', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#ffffff', outline: 'none', boxSizing: 'border-box' },
     label: { display: 'block', fontSize: '12px', fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' },
     modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, backdropFilter: 'blur(4px)' },
     modalCard: { background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '440px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', maxHeight: '90vh', overflowY: 'auto' },
@@ -184,24 +188,25 @@ export default function ContactsPage() {
       <div style={s.card}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr>
-              {['Full Name', 'Role', 'School', 'Email', 'Phone', 'Notes', 'Actions'].map(h => (
-                <th key={h} style={s.th}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
-            ) : filteredContacts.length === 0 ? (
-              <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No contacts found</td></tr>
-            ) : (
-              filteredContacts.map((contact) => (
-                <tr key={contact.id}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{contact.full_name}</td>
+  <tr>
+    {['#', 'Full Name', 'Role', 'School', 'Email', 'Phone', 'Notes', 'Actions'].map(h => (
+      <th key={h} style={s.th}>{h}</th>
+    ))}
+  </tr>
+</thead>
+<tbody>
+  {loading ? (
+    <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
+  ) : filteredContacts.length === 0 ? (
+    <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No contacts found</td></tr>
+  ) : (
+              filteredContacts.map((contact, i) => (
+  <tr key={contact.id}
+    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+  >
+    <td style={{ ...s.td, width: '40px', color: 'rgba(255,255,255,0.3)' }}>{i + 1}</td>
+    <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{contact.full_name}</td>
                   <td style={s.td}>
                     <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
                       {contact.role}
@@ -258,9 +263,26 @@ export default function ContactsPage() {
               <div>
                 <label style={s.label}>Role *</label>
                 <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} style={s.input}>
-                  {roles.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
+  {roles.map(r => (
+    <option key={r} value={r} style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>
+      {r}
+    </option>
+  ))}
+</select>
               </div>
+
+              {form.role === 'Other' && (
+                <div style={{ marginTop: '8px' }}>
+                  <label style={s.label}>Specify Role *</label>
+                  <input 
+                    type="text" 
+                    value={customRole} 
+                    onChange={(e) => setCustomRole(e.target.value)} 
+                    placeholder="e.g. Graphic Designer" 
+                    style={s.input} 
+                  />
+                </div>
+              )}
               <div>
                 <label style={s.label}>School Name</label>
                 <input type="text" value={form.school_name} onChange={(e) => setForm({ ...form, school_name: e.target.value })} placeholder="e.g. Al-Ahliyya School" style={s.input} />
@@ -282,7 +304,7 @@ export default function ContactsPage() {
               <button onClick={handleSubmit} style={{ flex: 1, background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
                 {editingContact ? 'Save Changes' : 'Add Contact'}
               </button>
-              <button onClick={() => { setShowForm(false); setEditingContact(null); setForm(emptyForm) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
+              <button onClick={() => { setShowForm(false); setEditingContact(null); setCustomRole('') }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
                 Cancel
               </button>
             </div>

@@ -11,14 +11,22 @@ export async function GET() {
   if (errorResponse) return errorResponse
 
   const supabase = createServiceClient()
-  const [{ data: students, error: se }, { data: visits, error: ve }] = await Promise.all([
+  const [
+    { data: students, error: se }, 
+    { data: visits, error: ve }, 
+    { data: completions, error: ce } // Added completion fetch
+  ] = await Promise.all([
     supabase.from('visit_students').select('*').order('id', { ascending: false }),
     supabase.from('school_visits').select('id, school_name, visit_date'),
+    supabase.from('visit_completions').select('*'), // This fetches the "Done" records
   ])
 
   if (se) return NextResponse.json({ error: se.message }, { status: 500 })
   if (ve) return NextResponse.json({ error: ve.message }, { status: 500 })
-  return NextResponse.json({ students, visits })
+  if (ce) return NextResponse.json({ error: ce.message }, { status: 500 }) // Error check for completions
+
+  // Return all three arrays to the frontend
+  return NextResponse.json({ students, visits, completions })
 }
 
 // action: 'update' | 'delete'
