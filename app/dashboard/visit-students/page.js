@@ -169,7 +169,7 @@ input: { width: '100%', backgroundColor: '#1a1a2e', border: '1px solid rgba(255,
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>Visit Students</h1>
+          <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>Leads</h1>
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>Students collected during school visits</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

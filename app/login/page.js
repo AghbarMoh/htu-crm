@@ -398,7 +398,7 @@ export default function LoginPage() {
               marginBottom: 0,
               fontFamily: 'sans-serif',
             }}>
-              HTU Student Recruitment & Outreach Office
+              HTU Students Recruitment & Outreach Office
             </p>
           </div>
         </div>

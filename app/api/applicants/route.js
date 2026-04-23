@@ -109,11 +109,20 @@ export async function POST(req) {
 
     for (const vs of visitStudents) {
       const match = currentApplicants.find(a => {
-        const cleanAppName = a.full_name?.toLowerCase().replace(/\s+/g, '')
-        const cleanVisitName = vs.full_name?.toLowerCase().replace(/\s+/g, '')
-        const isNameMatch = cleanAppName && cleanVisitName && cleanAppName === cleanVisitName
+        // Phone normalization — strip everything except digits
+        const normalizePhone = (p) => p?.replace(/\D/g, '').replace(/^962/, '0').replace(/^00962/, '0')
+        const isPhoneMatch = a.phone && vs.phone && normalizePhone(a.phone) === normalizePhone(vs.phone)
+        
+        // Email match
         const isEmailMatch = a.email && vs.email && a.email.toLowerCase() === vs.email.toLowerCase()
-        const isPhoneMatch = a.phone && vs.phone && a.phone === vs.phone
+
+        // Name match — split into words and check if all words of the shorter name exist in the longer name
+        const appWords = a.full_name?.toLowerCase().split(/\s+/).filter(Boolean) || []
+        const visitWords = vs.full_name?.toLowerCase().split(/\s+/).filter(Boolean) || []
+        const shorter = appWords.length <= visitWords.length ? appWords : visitWords
+        const longer = appWords.length <= visitWords.length ? visitWords : appWords
+        const isNameMatch = shorter.length > 0 && shorter.every(word => longer.includes(word))
+
         return isNameMatch || isEmailMatch || isPhoneMatch
       })
 

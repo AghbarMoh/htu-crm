@@ -18,7 +18,7 @@ export async function GET() {
       { data: visits }
     ] = await Promise.all([
       supabase.from('profiles').select('full_name').eq('id', user.id).single(),
-      supabase.from('applicants').select('id, is_matched').eq('is_archived', false),
+      supabase.from('applicants').select('id, is_matched, is_archived'),
       supabase.from('visit_completions').select('*'),
       supabase.from('visit_students').select('id'),
       supabase.from('contacts').select('id'),
@@ -28,7 +28,7 @@ export async function GET() {
     return NextResponse.json({
       profile: profile || null,
       stats: {
-        totalApplicants: applicants?.length || 0,
+        totalApplicants: applicants?.filter(a => !a.is_archived).length || 0,
         matchedApplicants: applicants?.filter(a => a.is_matched).length || 0,
         totalVisits: completions?.length || 0,
         totalVisitStudents: students?.length || 0,

@@ -8,6 +8,14 @@ import {
   Calendar, Clock, MapPin, Heart, Bell
 } from 'lucide-react'
 
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  if (hour < 21) return 'Good evening'
+  return 'Good night'
+}
+
 function useCountUp(target, duration = 800) {
   const [val, setVal] = useState(0)
   useEffect(() => {
@@ -109,7 +117,8 @@ export default function DashboardPage() {
   
 
   useEffect(() => { 
-    fetchDashboardData() 
+    fetchDashboardData()
+    fetchNotifications()
 
     const fetchDailyTip = async () => {
       const today = new Date().toDateString() // e.g., "Fri Apr 17 2026"
@@ -239,10 +248,6 @@ export default function DashboardPage() {
       setChatMessages(prev => [...prev, { role: 'assistant', text: "Connection dropped. Try again!" }])
     } finally {
       setChatLoading(false)
-      // Give the database a half-second to breathe, then refresh the bell
-      setTimeout(() => {
-        fetchNotifications()
-      }, 500)
     }
   }
 
@@ -274,9 +279,8 @@ export default function DashboardPage() {
   const STATS = [
     { label: 'Total Applicants', value: stats.totalApplicants, icon: ClipboardList, accent: '#3b82f6', href: '/dashboard/applicants' },
     { label: 'Completed Visits', value: stats.totalVisits, icon: School, accent: '#8b5cf6', href: '/dashboard/school-visits' },
-    { label: 'Visit Students', value: stats.totalVisitStudents, icon: Users, accent: '#f59e0b', href: '/dashboard/visit-students' },
-    { label: 'Matched', value: stats.matchedApplicants, icon: CheckCircle, accent: '#10b981', href: '/dashboard/applicants' },
-    { label: 'Contacts', value: stats.totalContacts, icon: BookUser, accent: '#ec4899', href: '/dashboard/contacts' },
+    { label: 'Leads', value: stats.totalVisitStudents, icon: Users, accent: '#f59e0b', href: '/dashboard/visit-students' },
+    { label: 'Matched', value: stats.matchedApplicants, icon: CheckCircle, accent: '#10b981', href: '/dashboard/visit-students' },    { label: 'Contacts', value: stats.totalContacts, icon: BookUser, accent: '#ec4899', href: '/dashboard/contacts' },
   ]
 
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -299,7 +303,7 @@ export default function DashboardPage() {
         {/* Left Side: Welcome & Tip */}
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            Good morning, {user?.full_name?.split(' ')[0] || 'Dalia'} 
+            {getGreeting()}, {user?.full_name?.split(' ')[0] || 'Dalia'} 
             <Heart size={20} color="#ef4444" fill="#ef4444" /> 
           </h1>
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', margin: '0 0 12px 0' }}>

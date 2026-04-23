@@ -80,7 +80,21 @@ export async function POST(req) {
     await logActivity('Undid visit completion', 'school_visit', school_name, 'Moved back to pending')
     return NextResponse.json({ success: true })
   }
+if (action === 'cancel') {
+    const { id, school_name } = payload
+    const { error } = await supabase.from('school_visits').update({ is_cancelled: true }).eq('id', id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await logActivity('Cancelled visit', 'school_visit', school_name, 'Visit marked as cancelled')
+    return NextResponse.json({ success: true })
+  }
 
+  if (action === 'uncancel') {
+    const { id, school_name } = payload
+    const { error } = await supabase.from('school_visits').update({ is_cancelled: false }).eq('id', id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await logActivity('Restored visit', 'school_visit', school_name, 'Cancelled visit restored to pending')
+    return NextResponse.json({ success: true })
+  }
   if (action === 'update_qstash') {
     // Called after scheduling a reminder to save the QStash message ID
     const { id, qstash_message_id } = payload

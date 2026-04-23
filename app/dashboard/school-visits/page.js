@@ -17,6 +17,8 @@ export default function SchoolVisitsPage() {
   const [uploadingImages, setUploadingImages] = useState(false)
   const [completions, setCompletions] = useState({})
   const [isCompletedCollapsed, setIsCompletedCollapsed] = useState(false)
+const [isCancelledCollapsed, setIsCancelledCollapsed] = useState(true)
+const [isPendingCollapsed, setIsPendingCollapsed] = useState(false)
   
   // NEW QR STATE
   const [showQRModal, setShowQRModal] = useState(false)
@@ -207,7 +209,26 @@ export default function SchoolVisitsPage() {
     setCompletionImages([])
     fetchAllData()
   }
+const handleCancel = async (visitId) => {
+    if (!confirm('Mark this visit as cancelled? It will be stored under Cancelled Visits.')) return
+    const visit = visits.find(v => v.id === visitId)
+    await fetch('/api/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'cancel', payload: { id: visitId, school_name: visit?.school_name } })
+    })
+    fetchAllData()
+  }
 
+  const handleUncancel = async (visitId) => {
+    const visit = visits.find(v => v.id === visitId)
+    await fetch('/api/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'uncancel', payload: { id: visitId, school_name: visit?.school_name } })
+    })
+    fetchAllData()
+  }
   const handleUndoComplete = async (visitId) => {
     if (!confirm('Are you sure you want to undo this completion?')) return
     const visit = visits.find(v => v.id === visitId)
@@ -339,8 +360,9 @@ export default function SchoolVisitsPage() {
 
 
   const filteredVisits = filterType === 'all' ? visits : visits.filter(v => v.type === filterType)
-  const pendingVisits = filteredVisits.filter(v => !completions[v.id])
-  const completedVisits = filteredVisits.filter(v => completions[v.id])
+  const pendingVisits = filteredVisits.filter(v => !completions[v.id] && !v.is_cancelled)
+const completedVisits = filteredVisits.filter(v => completions[v.id] && !v.is_cancelled)
+const cancelledVisits = filteredVisits.filter(v => v.is_cancelled)
 
   const s = {
     card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' },
@@ -381,8 +403,13 @@ export default function SchoolVisitsPage() {
         ))}
       </div>
 
-      <div style={{ marginBottom: '8px' }}><h2 style={{ fontSize: '15px', fontWeight: '600', color: '#ffffff', marginBottom: '12px' }}>Upcoming / Pending Visits ({pendingVisits.length})</h2></div>
-      <div style={{ ...s.card, marginBottom: '32px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', cursor: 'pointer' }} onClick={() => setIsPendingCollapsed(!isPendingCollapsed)}>
+        <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#ffffff' }}>Upcoming / Pending Visits ({pendingVisits.length})</h2>
+        <button style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)' }}>
+          {isPendingCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+        </button>
+      </div>
+      {!isPendingCollapsed && <div style={{ ...s.card, marginBottom: '32px' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
   <tr>{['#', 'School Name', 'Type', 'School Type', 'City', 'Date', 'Time', 'Status', 'Companion','Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
@@ -410,6 +437,7 @@ export default function SchoolVisitsPage() {
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={() => { setQrVisit(visit); setShowQRModal(true); }} title="QR Kiosk" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6' }}><QrCode size={14} /></button>
                       <button onClick={() => handleEdit(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Pencil size={14} /></button>
+                      <button onClick={() => handleCancel(visit.id)} title="Cancel Visit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b' }}>✕</button>
                       <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Trash2 size={14} /></button>
                       <button onClick={() => generateWord(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><FileText size={14} /></button>
                     </div>
@@ -418,7 +446,7 @@ export default function SchoolVisitsPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', cursor: 'pointer' }} onClick={() => setIsCompletedCollapsed(!isCompletedCollapsed)}>
         <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#10b981' }}>Completed Visits ({completedVisits.length})</h2>
@@ -464,7 +492,41 @@ export default function SchoolVisitsPage() {
           </table>
         </div>
       )}
+{/* Cancelled Visits Section */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', marginTop: '32px', cursor: 'pointer' }} onClick={() => setIsCancelledCollapsed(!isCancelledCollapsed)}>
+        <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#ef4444' }}>Cancelled Visits ({cancelledVisits.length})</h2>
+        <button style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)' }}>
+          {isCancelledCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+        </button>
+      </div>
 
+      {!isCancelledCollapsed && (
+        <div style={{ ...s.card, opacity: 0.7 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['#', 'School Name', 'Type', 'Date', 'Companion', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {cancelledVisits.length === 0 ? <tr><td colSpan={6} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No cancelled visits</td></tr> :
+                cancelledVisits.map((visit, i) => (
+                  <tr key={visit.id} style={{ background: 'rgba(239,68,68,0.03)' }}>
+                    <td style={{ ...s.td, width: '40px', color: 'rgba(255,255,255,0.3)' }}>{i + 1}</td>
+                    <td style={{ ...s.td, color: 'rgba(255,255,255,0.5)', fontWeight: '500', textDecoration: 'line-through' }}>{visit.school_name}</td>
+                    <td style={s.td}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(239,68,68,0.15)', color: '#f87171' }}>{visit.type}</span></td>
+                    <td style={s.td}>{visit.visit_date}</td>
+                    <td style={s.td}>{visit.companion || '-'}</td>
+                    <td style={s.td}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => handleUncancel(visit.id)} title="Restore Visit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10b981', fontSize: '12px' }}>↩ Restore</button>
+                        <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {/* Add/Edit Modal */}
       {showForm && (
         <div style={s.modal}>
@@ -592,9 +654,24 @@ export default function SchoolVisitsPage() {
               />
             </div>
 
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: '0 0 20px 0', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: '0 0 12px 0', lineHeight: '1.5' }}>
               Students can scan this code with their phones to securely enter their contact information.
             </p>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 12px', marginBottom: '20px' }}>
+              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', flex: 1, wordBreak: 'break-all' }}>
+                {typeof window !== 'undefined' ? `${window.location.origin}/apply/${qrVisit.id}` : ''}
+              </span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/apply/${qrVisit.id}`)
+                  alert('Link copied!')
+                }}
+                style={{ background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', fontWeight: '600', color: '#60a5fa', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                Copy Link
+              </button>
+            </div>
 
             <button onClick={() => setShowQRModal(false)} style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
               Close Kiosk
