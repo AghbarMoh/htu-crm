@@ -134,11 +134,9 @@ export default function DashboardPage() {
 
       // 2. If it's a new day, fetch a fresh tip from the internet
       try {
-        // We are using the free 'Advice Slip' API which is perfect for short life tips
-        const res = await fetch('https://api.adviceslip.com/advice')
+        const res = await fetch('/api/quote')
         const data = await res.json()
-        const newTip = data.slip.advice
-
+        const newTip = `"${data.quote}" — ${data.author}`
         // Save it to state AND save it to the browser for the rest of the day
         setDailyTip(newTip)
         localStorage.setItem('htu_daily_tip', newTip)
