@@ -18,6 +18,11 @@ export default function MessagingPage() {
   const [filterMajor, setFilterMajor] = useState('all')
   const [waMessage, setWaMessage] = useState('')
   
+  // --- Campaign State ---
+  const [campaignActive, setCampaignActive] = useState(false)
+  const [campaignQueue, setCampaignQueue] = useState([])
+  const [campaignIdx, setCampaignIdx] = useState(0)
+  
 
   const majors = ['Energy Engineering', 'Electrical Engineering', 'Game Design and Development', 'Architectural Engineering', 'Cyber Security', 'Computer Science', 'Data Science and AI', 'Industrial Engineering']
 
@@ -111,9 +116,37 @@ export default function MessagingPage() {
   }
 
   const generateWALink = (phone) => {
+    if (!phone) return ''
     const cleaned = phone.replace(/\D/g, '')
     const number = cleaned.startsWith('0') ? '962' + cleaned.slice(1) : cleaned
     return 'https://wa.me/' + number
+  }
+
+  // --- Campaign Logic ---
+  const startCampaign = () => {
+    const queue = currentList.filter(p => selectedPhones.includes(p.phone) && p.phone)
+    if (queue.length === 0) { alert('Select at least one contact with a phone number'); return }
+    setCampaignQueue(queue)
+    setCampaignIdx(0)
+    setCampaignActive(true)
+  }
+
+  const handleCampaignSend = () => {
+    const currentPerson = campaignQueue[campaignIdx]
+    const link = generateWALink(currentPerson.phone) + (waMessage ? '?text=' + encodeURIComponent(waMessage) : '')
+    window.open(link, '_blank')
+    nextCampaignStep()
+  }
+
+  const handleCampaignSkip = () => nextCampaignStep()
+
+  const nextCampaignStep = () => {
+    if (campaignIdx < campaignQueue.length - 1) {
+      setCampaignIdx(prev => prev + 1)
+    } else {
+      setCampaignActive(false)
+      alert('WhatsApp Campaign Completed! 🎉')
+    }
   }
 
   const s = {
@@ -146,13 +179,13 @@ export default function MessagingPage() {
           {sourceTab === 'applicants' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
               <select value={filterPaid} onChange={(e) => setFilterPaid(e.target.value)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '7px 12px', fontSize: '12px', color: 'rgba(255,255,255,0.7)', outline: 'none' }}>
-                <option value="all">All (Paid + Not Paid)</option>
-                <option value="paid">Paid Only</option>
-                <option value="notpaid">Not Paid Only</option>
+                <option value="all" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>All (Paid + Not Paid)</option>
+                <option value="paid" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>Paid Only</option>
+                <option value="notpaid" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>Not Paid Only</option>
               </select>
               <select value={filterMajor} onChange={(e) => setFilterMajor(e.target.value)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '7px 12px', fontSize: '12px', color: 'rgba(255,255,255,0.7)', outline: 'none' }}>
-                <option value="all">All Majors</option>
-                {majors.map(m => <option key={m} value={m}>{m}</option>)}
+                <option value="all" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>All Majors</option>
+                {majors.map(m => <option key={m} value={m} style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>{m}</option>)}
               </select>
             </div>
           )}
@@ -178,7 +211,7 @@ export default function MessagingPage() {
                 >
                   <input type="checkbox" checked={activeTab === 'email' ? selectedEmails.includes(person.email) : selectedPhones.includes(person.phone)} onChange={() => {}} style={{ accentColor: '#3b82f6' }} />
                   <div>
-                    <p style={{ fontSize: '13px', fontWeight: '500', color: '#ffffff', margin: '0 0 1px 0' }}>{person.full_name}</p>
+                    <p dir="auto" style={{ fontSize: '13px', fontWeight: '500', color: '#ffffff', margin: '0 0 1px 0' }}>{person.full_name}</p>
                     <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>{activeTab === 'email' ? (person.email || 'No email') : (person.phone || 'No phone')}</p>
                   </div>
                 </div>
@@ -220,11 +253,11 @@ export default function MessagingPage() {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' }}>Subject</label>
-                <input type="text" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} placeholder="e.g. Complete Your HTU Application" style={s.input} />
+                <input dir="auto" type="text" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} placeholder="e.g. Complete Your HTU Application" style={s.input} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' }}>Message</label>
-                <textarea value={emailBody} onChange={(e) => setEmailBody(e.target.value)} placeholder="Write your message here..." rows={7} style={{ ...s.input, resize: 'vertical' }} />
+                <textarea dir="auto" value={emailBody} onChange={(e) => setEmailBody(e.target.value)} placeholder="Write your message here..." rows={7} style={{ ...s.input, resize: 'vertical' }} />
               </div>
               <div>
                 <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', marginBottom: '8px' }}>Quick templates:</p>
@@ -242,129 +275,71 @@ export default function MessagingPage() {
               </button>
             </div>
           ):(
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-    <div>
-      <label
-        style={{
-          display: 'block',
-          fontSize: '12px',
-          fontWeight: '500',
-          color: 'rgba(255,255,255,0.5)',
-          marginBottom: '6px',
-        }}
-      >
-        Message Template (optional)
-      </label>
-      <textarea
-        value={waMessage}
-        onChange={(e) => setWaMessage(e.target.value)}
-        placeholder="Write a message to pre-fill in WhatsApp... (optional)"
-        rows={4}
-        style={{ ...s.input, resize: 'vertical' }}
-      />
-    </div>
-
-    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
-      {selectedPhones.length > 0
-        ? selectedPhones.length +
-          ' selected — click Open Chat to message each one'
-        : 'Select people from the left panel or use the list below'}
-    </p>
-
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-        maxHeight: '320px',
-        overflowY: 'auto',
-      }}
-    >
-      {currentList
-        .filter((p) => p.phone)
-        .map((person) => (
-          <div
-            key={person.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 14px',
-              background: selectedPhones.includes(person.phone)
-                ? 'rgba(16,185,129,0.08)'
-                : 'rgba(255,255,255,0.03)',
-              borderRadius: '10px',
-              border: selectedPhones.includes(person.phone)
-                ? '1px solid rgba(16,185,129,0.3)'
-                : '1px solid rgba(255,255,255,0.06)',
-              cursor: 'pointer',
-            }}
-            onClick={() => togglePhone(person.phone)}
-          >
-            <div
-              style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
-            >
-              <input
-                type="checkbox"
-                checked={selectedPhones.includes(person.phone)}
-                onChange={() => {}}
-                style={{ accentColor: '#10b981' }}
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <p
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: '#ffffff',
-                    margin: '0 0 2px 0',
-                  }}
-                >
-                  {person.full_name}
-                </p>
-                <p
-                  style={{
-                    fontSize: '11px',
-                    color: 'rgba(255,255,255,0.3)',
-                    margin: 0,
-                  }}
-                >
-                  {person.phone}
-                </p>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' }}>Message Template (optional)</label>
+                <textarea dir="auto" value={waMessage} onChange={(e) => setWaMessage(e.target.value)} placeholder="Write a message to pre-fill in WhatsApp... (optional)" rows={4} style={{ ...s.input, resize: 'vertical' }} disabled={campaignActive} />
               </div>
-            </div>
 
-            <a
-              href={
-                generateWALink(person.phone) +
-                (waMessage
-                  ? '?text=' + encodeURIComponent(waMessage)
-                  : '')
-              }
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: 'rgba(16,185,129,0.15)',
-                border: '1px solid rgba(16,185,129,0.3)',
-                borderRadius: '8px',
-                padding: '6px 14px',
-                fontSize: '12px',
-                fontWeight: '600',
-                color: '#10b981',
-                textDecoration: 'none',
-              }}
-            >
-              <MessageCircle size={13} />
-              Open Chat
-            </a>
-          </div>
-        ))}
-    </div>
-  </div>
-)}
+              {!campaignActive ? (
+                // --- NORMAL LIST MODE ---
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
+                      {selectedPhones.length > 0 ? selectedPhones.length + ' selected' : 'Select people from the left panel'}
+                    </p>
+                    {selectedPhones.length > 0 && (
+                      <button onClick={startCampaign} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '12px', fontWeight: '600', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(16,185,129,0.2)' }}>
+                        <Send size={14} /> Start Campaign
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
+                    {currentList.filter(p => p.phone).map(person => (
+                      <div key={person.id} onClick={() => togglePhone(person.phone)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: selectedPhones.includes(person.phone) ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.03)', borderRadius: '10px', border: selectedPhones.includes(person.phone) ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <input type="checkbox" checked={selectedPhones.includes(person.phone)} onChange={() => {}} style={{ accentColor: '#10b981' }} />
+                          <div>
+                            <p dir="auto" style={{ fontSize: '13px', fontWeight: '500', color: '#ffffff', margin: '0 0 2px 0' }}>{person.full_name}</p>
+                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>{person.phone}</p>
+                          </div>
+                        </div>
+                        <a href={generateWALink(person.phone) + (waMessage ? '?text=' + encodeURIComponent(waMessage) : '')} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: '600', color: '#10b981', textDecoration: 'none' }}>
+                          <MessageCircle size={13} /> Open
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                // --- CAMPAIGN ACTIVE MODE ---
+                <div style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '24px', textAlign: 'center', marginTop: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#10b981', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>
+                    Campaign Progress: {campaignIdx + 1} of {campaignQueue.length}
+                  </div>
+                  
+                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+                    <h3 dir="auto" style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#ffffff' }}>{campaignQueue[campaignIdx]?.full_name}</h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'rgba(255,255,255,0.4)' }}>{campaignQueue[campaignIdx]?.phone}</p>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                    <button onClick={handleCampaignSkip} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#ffffff', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+                      Skip
+                    </button>
+                    <button onClick={handleCampaignSend} style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#10b981', border: 'none', borderRadius: '10px', color: '#ffffff', fontSize: '14px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
+                      <Send size={16} /> Send & Next
+                    </button>
+                  </div>
+
+                  <button onClick={() => setCampaignActive(false)} style={{ marginTop: '24px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '12px', textDecoration: 'underline', cursor: 'pointer' }}>
+                    End Campaign Early
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

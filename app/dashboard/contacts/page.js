@@ -88,55 +88,7 @@ export default function ContactsPage() {
       console.error("Failed to delete contact:", error)
     }
   }
-  const generateWord = async () => {
-    alert('Generating Word Document...');
-    const { 
-      Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
-      WidthType, HeadingLevel, AlignmentType 
-    } = await import('docx');
-    const { saveAs } = await import('file-saver');
-
-    const tableHeader = new TableRow({
-      children: ['Full Name', 'Role', 'School', 'Email', 'Phone', 'Notes'].map(
-        text => new TableCell({
-          children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })],
-          background: { fill: "f3f4f6" }
-        })
-      ),
-    });
-
-    const dataRows = filteredContacts.map(c => new TableRow({
-      children: [
-        new TableCell({ children: [new Paragraph(c.full_name || '-')] }),
-        new TableCell({ children: [new Paragraph(c.role || '-')] }),
-        new TableCell({ children: [new Paragraph(c.school_name || '-')] }),
-        new TableCell({ children: [new Paragraph(c.email || '-')] }),
-        new TableCell({ children: [new Paragraph(c.phone || '-')] }),
-        new TableCell({ children: [new Paragraph(c.notes || '-')] }),
-      ]
-    }));
-
-    const doc = new Document({
-      sections: [{
-        children: [
-          new Paragraph({
-            text: "HTU CRM - Contacts Report",
-            heading: HeadingLevel.HEADING_1,
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 400 },
-          }),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: [tableHeader, ...dataRows],
-          }),
-        ],
-      }],
-    });
-
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `HTU_Contacts_${new Date().toISOString().split('T')[0]}.docx`);
-    await logActivity('Exported Word Doc', 'contact', 'All Contacts', 'Contacts list exported to Word');
-  };
+  
 
   const filteredContacts = filterRole === 'all' ? contacts : contacts.filter(c => c.role === filterRole)
 
@@ -159,11 +111,11 @@ export default function ContactsPage() {
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button 
-            onClick={generateWord} 
+            onClick={() => window.open(`/api/contacts/export?role=${filterRole}`, '_blank')} 
             style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#f59e0b', cursor: 'pointer' }}
           >
             <FileText size={16} />
-            Export Word
+            Export PDF
           </button>
           <button onClick={() => { setShowForm(true); setEditingContact(null); setForm(emptyForm) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
             <Plus size={16} />
@@ -206,13 +158,13 @@ export default function ContactsPage() {
     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
   >
     <td style={{ ...s.td, width: '40px', color: 'rgba(255,255,255,0.3)' }}>{i + 1}</td>
-    <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{contact.full_name}</td>
+    <td dir="auto" style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{contact.full_name}</td>
                   <td style={s.td}>
                     <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
                       {contact.role}
                     </span>
                   </td>
-                  <td style={s.td}>{contact.school_name || '-'}</td>
+                  <td dir="auto" style={s.td}>{contact.school_name || '-'}</td>
                   <td style={s.td}>
                     {contact.email ? (
                       <a href={"mailto:" + contact.email} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#60a5fa', textDecoration: 'none', fontSize: '13px' }}>
@@ -229,7 +181,7 @@ export default function ContactsPage() {
                       </a>
                     ) : '-'}
                   </td>
-                  <td style={{ ...s.td, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.notes || '-'}</td>
+                  <td dir="auto" style={{ ...s.td, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.notes || '-'}</td>
                   <td style={s.td}>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={() => handleEdit(contact)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '4px', display: 'flex' }}
@@ -258,7 +210,7 @@ export default function ContactsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label style={s.label}>Full Name *</label>
-                <input type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="e.g. Ahmad Al-Hassan" style={s.input} />
+                <input dir="auto" type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="e.g. Ahmad Al-Hassan" style={s.input} />
               </div>
               <div>
                 <label style={s.label}>Role *</label>
@@ -275,6 +227,7 @@ export default function ContactsPage() {
                 <div style={{ marginTop: '8px' }}>
                   <label style={s.label}>Specify Role *</label>
                   <input 
+                    dir="auto"
                     type="text" 
                     value={customRole} 
                     onChange={(e) => setCustomRole(e.target.value)} 
@@ -285,7 +238,7 @@ export default function ContactsPage() {
               )}
               <div>
                 <label style={s.label}>School Name</label>
-                <input type="text" value={form.school_name} onChange={(e) => setForm({ ...form, school_name: e.target.value })} placeholder="e.g. Al-Ahliyya School" style={s.input} />
+                <input dir="auto" type="text" value={form.school_name} onChange={(e) => setForm({ ...form, school_name: e.target.value })} placeholder="e.g. Al-Ahliyya School" style={s.input} />
               </div>
               <div>
                 <label style={s.label}>Email</label>
@@ -297,7 +250,7 @@ export default function ContactsPage() {
               </div>
               <div>
                 <label style={s.label}>Notes</label>
-                <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Any additional notes..." rows={3} style={{ ...s.input, resize: 'vertical' }} />
+                <textarea dir="auto" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Any additional notes..." rows={3} style={{ ...s.input, resize: 'vertical' }} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>

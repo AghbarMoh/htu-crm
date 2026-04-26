@@ -18,14 +18,16 @@ export async function GET() {
     { data: applicants },
     { data: contacts },
     { data: tasks },
+    { data: completedApplicants },
   ] = await Promise.all([
     supabase.from('school_visits').select('*'),
     supabase.from('visit_completions').select('*'),
     supabase.from('visit_students').select('*'),
-    supabase.from('applicants').select('*').eq('is_archived', false),
+    supabase.from('applicants').select('*'),
     supabase.from('contacts').select('*'),
     supabase.from('tasks').select('*'),
+    supabase.from('completed_applicants').select('school_name, major'),
   ])
 
-  return NextResponse.json({ visits, completions, students, applicants, contacts, tasks })
+  return NextResponse.json({ visits, completions, students, applicants, contacts, tasks, completedApplicants })
 }

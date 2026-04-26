@@ -13,6 +13,7 @@ body {
 
 /* ── PALETTE ─────────────────────────────────────────────────── */
 :root {
+  
   --bg-base:        #0a0a0f;
   --bg-panel:       #0f0f17;
   --bg-card:        #14141e;
@@ -537,3 +538,4 @@ body {
 }
 
 .animate-in { animation: fadeIn 0.25s ease both; }
+

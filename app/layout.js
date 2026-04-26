@@ -11,6 +11,8 @@ const inter = Inter({
 export const metadata = {
   title: "HTU CRM",
   description: "Students Recruitement & Outreach Office",
+  manifest: "/manifest.json",
+  themeColor: "#0a0a0f",
 };
  
 export default function RootLayout({ children }) {

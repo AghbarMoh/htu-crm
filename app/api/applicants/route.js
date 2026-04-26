@@ -157,5 +157,50 @@ export async function POST(req) {
     return NextResponse.json({ success: true })
   }
 
+  if (action === 'import_completed') {
+    const { rows, filename } = payload
+    if (!rows || rows.length === 0) return NextResponse.json({ error: 'No valid applicants' }, { status: 400 })
+    const { error } = await supabase.from('completed_applicants').insert(rows)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await logActivity('Imported completed applicants', 'applicant', filename, `Imported ${rows.length} completed applicants from Excel`)
+    return NextResponse.json({ success: true, count: rows.length })
+  }
+
+  if (action === 'archive_completed') {
+    const { label, count } = payload
+    if (!label) return NextResponse.json({ error: 'Label required' }, { status: 400 })
+    const today = new Date().toISOString()
+    const { error } = await supabase
+      .from('completed_applicants')
+      .update({ is_archived: true, archive_label: label, archived_at: today })
+      .eq('is_archived', false)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await logActivity('Archived completed applicants', 'applicant', label, `Archived ${count} completed applicants`)
+    return NextResponse.json({ success: true })
+  }
+
+  if (action === 'cross_reference_completed') {
+    const { data: visitStudents } = await supabase.from('visit_students').select('id, full_name, phone, email')
+    const { data: completedApplicants } = await supabase.from('completed_applicants').select('id, full_name, phone').eq('is_archived', false)
+    if (!visitStudents || !completedApplicants) return NextResponse.json({ success: true })
+
+    for (const vs of visitStudents) {
+      const match = completedApplicants.find(a => {
+        const normalizePhone = (p) => p?.replace(/\D/g, '').replace(/^962/, '0').replace(/^00962/, '0')
+        const isPhoneMatch = a.phone && vs.phone && normalizePhone(a.phone) === normalizePhone(vs.phone)
+        const appWords = a.full_name?.toLowerCase().split(/\s+/).filter(Boolean) || []
+        const visitWords = vs.full_name?.toLowerCase().split(/\s+/).filter(Boolean) || []
+        const shorter = appWords.length <= visitWords.length ? appWords : visitWords
+        const longer = appWords.length <= visitWords.length ? visitWords : appWords
+        const isNameMatch = shorter.length > 0 && shorter.every(word => longer.includes(word))
+        return isNameMatch || isPhoneMatch
+      })
+      if (match) {
+        await supabase.from('completed_applicants').update({ is_matched: true, matched_visit_student_id: vs.id }).eq('id', match.id)
+      }
+    }
+    return NextResponse.json({ success: true })
+  }
+
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
 }

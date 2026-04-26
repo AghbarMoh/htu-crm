@@ -1,42 +1,20 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, X, Send, Bot, User } from 'lucide-react'
+import { MessageCircle, X, Send, Bot } from 'lucide-react'
 
 export default function DaliaChatWidget() {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([
     { 
       role: 'assistant', 
-      text: "Hi Dalia! 👋 I'm your CRM Assistant developed by Aghbar. I'm here to help you stay organized. Here is what I can do for you:\n\n📅 <b>School Visits:</b> Add new visits, update times, or cancel them.\n👥 <b>Contacts:</b> Save new professional contacts (Name & Role required).\n📊 <b>Insights:</b> Ask me about your schedule or student metrics.\n\nI'm fluent in both <b>English & Arabic</b>—how can I help you today?" 
+      text: "Hi Dalia! 👋 I'm your email assistant. Tell me what email you need and I'll write it for you — in English or Arabic, whatever you prefer." 
     }
   ])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
-  const quickTemplates = [
-    { 
-      label: '➕ Add Visit', 
-      text: 'Add a visit: .' 
-    },
-    { 
-      label: '👤 Add Contact', 
-      text: 'Add contact: .' 
-    },
-    { 
-      label: '✏️ Edit Visit', 
-      text: 'Change the time for my visit to [School Name] to [New Time].' 
-    },
-    { 
-      label: '🗑️ Delete Visit', 
-      text: 'Cancel my visit to .' 
-    },
-    { 
-      label: '📅 Check Date', 
-      text: 'What visits do I have scheduled for [], and did I complete any?' 
-    }
-  ];
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -128,20 +106,7 @@ export default function DaliaChatWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Action Templates */}
-          <div style={{ display: 'flex', gap: '8px', padding: '12px 16px 0 16px', overflowX: 'auto', scrollbarWidth: 'none', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.2)' }}>
-            {quickTemplates.map((tpl, index) => (
-              <button
-                key={index}
-                onClick={() => setInput(tpl.text)}
-                style={{ whiteSpace: 'nowrap', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa', padding: '6px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.25)'; e.currentTarget.style.color = '#fff' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.15)'; e.currentTarget.style.color = '#60a5fa' }}
-              >
-                {tpl.label}
-              </button>
-            ))}
-          </div>
+          
 
           {/* Input Area */}
           <div style={{ padding: '12px', background: 'rgba(0,0,0,0.2)' }}>

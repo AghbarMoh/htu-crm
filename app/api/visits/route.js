@@ -102,6 +102,11 @@ if (action === 'cancel') {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })
   }
-
+if (action === 'mark_qr_sent') {
+  const { id } = payload
+  const { error } = await supabase.from('school_visits').update({ qr_sent: true }).eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
 }

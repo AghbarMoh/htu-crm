@@ -251,67 +251,61 @@ function buildHtml(report, s, cities, logoSrc) {
     )
   }).join('')
 
-  const css = [
+ const css = [
     '* { box-sizing: border-box; margin: 0; padding: 0; }',
-    "body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #1a1a1a; background: #fff; padding: 32px 40px; }",
-    '.header { display: flex; align-items: center; justify-content: space-between; padding: 0 0 18px 0; border-bottom: 3px solid #D63027; margin-bottom: 28px; }',
-    '.header-logo { font-size: 17px; font-weight: 700; color: #0a0a0a; letter-spacing: -0.2px; }',
-    '.header-sub { font-size: 11px; color: #666; margin-top: 3px; }',
-    '.report-title { font-size: 22px; font-weight: 700; color: #0a0a0a; margin-bottom: 6px; }',
-    '.meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; background: #f9f9f9; border: 1px solid #e8e8e8; border-left: 4px solid #D63027; border-radius: 6px; padding: 16px 20px; margin-bottom: 28px; }',
-    '.meta-item { display: flex; flex-direction: column; gap: 2px; }',
-    '.meta-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #999; }',
-    '.meta-value { font-size: 13px; color: #1a1a1a; unicode-bidi: plaintext; }',
-    '.prepared-by-block { background: #0a0a0a; color: #fff; border-radius: 6px; padding: 14px 18px; margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; }',
-    '.prepared-by-block .name { font-size: 14px; font-weight: 600; color: #fff; }',
-    '.prepared-by-block .role { font-size: 11px; color: #aaa; margin-top: 2px; }',
-    '.prepared-by-block .org { font-size: 11px; color: #D63027; font-weight: 500; }',
-    '.section { margin-bottom: 32px; }',
-    '.section-title { font-size: 14px; font-weight: 700; color: #0a0a0a; border-left: 4px solid #D63027; padding-left: 10px; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.3px; }',
-    '.sub-section { margin-bottom: 20px; padding-left: 12px; border-left: 2px solid #e8e8e8; }',
-    '.sub-section-title { font-size: 11px; font-weight: 700; color: #D63027; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.4px; }',
-    '.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }',
-    '.data-table th { background: #0a0a0a; color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }',
-    '.data-table td { padding: 8px 10px; border-bottom: 1px solid #efefef; vertical-align: top; line-height: 1.6; unicode-bidi: plaintext; direction: ltr; }',
+    "html, body { min-height: 100vh; background: #0a0a0f; margin: 0; }",
+    "body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #eeeef5; padding: 20mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
+    '.header { display: flex; align-items: center; justify-content: space-between; padding: 0 0 20px 0; border-bottom: 3px solid #D63027; margin-bottom: 32px; }',
+    '.header-logo { font-size: 19px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px; }',
+    '.header-sub { font-size: 12px; color: #8888a8; margin-top: 4px; }',
+    '.report-title { font-size: 26px; font-weight: 700; color: #ffffff; margin-bottom: 8px; }',
+    '.meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 32px; background: #14141e; border: 1px solid rgba(255,255,255,0.15); border-left: 5px solid #D63027; border-radius: 8px; padding: 20px 24px; margin-bottom: 32px; }',
+    '.meta-item { display: flex; flex-direction: column; gap: 4px; }',
+    '.meta-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #8888a8; }',
+    '.meta-value { font-size: 14px; color: #ffffff; unicode-bidi: plaintext; }',
+    '.section { margin-bottom: 40px; }',
+    '.section-title { font-size: 16px; font-weight: 700; color: #ffffff; border-left: 4px solid #D63027; padding-left: 12px; margin-bottom: 18px; text-transform: uppercase; letter-spacing: 0.5px; }',
+    '.sub-section { margin-bottom: 24px; padding-left: 16px; border-left: 2px solid rgba(255,255,255,0.15); }',
+    '.sub-section-title { font-size: 12px; font-weight: 700; color: #D63027; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }',
+    '.data-table { width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid rgba(255,255,255,0.15); }',
+    '.data-table th { background: #14141e; color: #ffffff; padding: 12px; text-align: left; font-weight: 700; text-transform: uppercase; border: 1px solid rgba(255,255,255,0.15); }',
+    '.data-table td { padding: 12px; border: 1px solid rgba(255,255,255,0.15); vertical-align: top; line-height: 1.6; color: #cccccc; unicode-bidi: plaintext; direction: ltr; }',
     '.data-table td[lang="ar"], .data-table td.rtl { direction: rtl; text-align: right; }',
-    '.data-table tr:last-child td { border-bottom: none; }',
-    '.data-table tr:nth-child(even) td { background: #fafafa; }',
-    '.swot-table { width: 100%; border-collapse: collapse; }',
-    '.swot-table td { width: 50%; padding: 14px 16px; vertical-align: top; border: 1px solid #e8e8e8; }',
-    '.swot-s { background: #f6fef9; } .swot-w { background: #fff5f5; }',
-    '.swot-o { background: #f5f5f5; } .swot-t { background: #fffbf0; }',
-    '.swot-head { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid currentColor; }',
-    '.swot-s .swot-head { color: #1a7a4a; } .swot-w .swot-head { color: #D63027; }',
-    '.swot-o .swot-head { color: #444; } .swot-t .swot-head { color: #b07d10; }',
-    '.swot-body { font-size: 12px; color: #333; line-height: 1.7; unicode-bidi: plaintext; }',
+    '.data-table tr:nth-child(even) td { background: rgba(255,255,255,0.03); }',
+    '.swot-table { width: 100%; border-collapse: collapse; border: 1px solid rgba(255,255,255,0.15); }',
+    '.swot-table td { width: 50%; padding: 20px; vertical-align: top; border: 1px solid rgba(255,255,255,0.15); }',
+    '.swot-s { background: rgba(62,207,142,0.05); } .swot-w { background: rgba(214,48,39,0.05); }',
+    '.swot-o { background: rgba(255,255,255,0.03); } .swot-t { background: rgba(245,166,35,0.05); }',
+    '.swot-head { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid currentColor; }',
+    '.swot-s .swot-head { color: #3ecf8e; } .swot-w .swot-head { color: #e74c3c; }',
+    '.swot-o .swot-head { color: #aaaaaa; } .swot-t .swot-head { color: #f5a623; }',
+    '.swot-body { font-size: 13px; color: #cccccc; line-height: 1.8; unicode-bidi: plaintext; }',
     '.page-break { page-break-before: always; }',
-    '.footer { margin-top: 48px; padding-top: 14px; border-top: 2px solid #0a0a0a; font-size: 10px; color: #888; display: flex; align-items: center; justify-content: space-between; }',
-    '.footer-left { color: #D63027; font-weight: 600; font-size: 11px; }',
+    '.footer { margin-top: 60px; padding-top: 20px; border-top: 2px solid rgba(255,255,255,0.15); font-size: 11px; color: #8888a8; display: flex; align-items: center; justify-content: space-between; }',
+    '.footer-left { color: #D63027; font-weight: 600; font-size: 12px; }',
   ].join(' ')
 
   return '<!DOCTYPE html>' +
     '<html lang="en" dir="ltr"><head><meta charset="UTF-8">' +
-    '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">' +
-    '<style>' + css + '@media print { .no-print { display: none !important; } @page { margin: 20mm; } }</style>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">' +
+    '<style>' + css + ' @media print { .no-print { display: none !important; } @page { margin: 0; size: A4 landscape; } }</style>' +
     '</head><body>' +
     '<div class="no-print" style="position:fixed;top:16px;right:16px;z-index:999;display:flex;gap:8px;">' +
-    '<button onclick="window.print()" style="padding:8px 16px;background:#1a2d52;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;">⬇ Save as PDF</button>' +
-    '<button onclick="window.close()" style="padding:8px 16px;background:#f7f8fc;color:#1a1a2e;border:1px solid #e0e4f0;border-radius:7px;font-size:13px;cursor:pointer;font-family:Inter,sans-serif;">✕ Close</button>' +
+    '<button onclick="window.print()" style="padding:10px 20px;background:#1a2d52;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);">⬇ Save as PDF</button>' +
+    '<button onclick="window.close()" style="padding:10px 20px;background:#14141e;color:#eeeef5;border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:14px;cursor:pointer;">✕ Close</button>' +
     '</div>' +
     '<div class="header">' +
-    '<div style="display:flex;align-items:center;gap:14px;">' +
-    '<div style="display:flex;align-items:center;justify-content:center; padding-right: 10px;">' +
-    '<img src="' + logoSrc + '" style="height:40px; width:auto; object-fit:contain; mix-blend-mode: multiply;" alt="HTU Logo" />' +
+    '<div style="display:flex;align-items:center;gap:16px;">' +
+    '<div style="display:flex;align-items:center;justify-content:center; padding-right: 12px;">' +
+    '<img src="' + logoSrc + '" style="height:48px; width:auto; object-fit:contain;" alt="HTU Logo" />' +
     '</div>' +
     '<div><div class="header-logo">Al-Hussein Technical University</div>' +
     '<div class="header-sub">Students Recruitment &amp; Outreach Manager · <strong>Dalia Zawaideh</strong></div></div>' +
     '</div>' +
-    '<div style="font-size:11px;color:#888;text-align:right;">Market Analysis Report<br>Generated ' +
+    '<div style="font-size:12px;color:#8888a8;text-align:right;">Market Analysis Report<br>Generated ' +
     new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) + '</div></div>' +
     '<div class="report-title">' + esc(report.country) + ' — Market Study ' + (report.study_period_from ?? '') + '</div>' +
-    '' +
     '<div class="meta-grid">' + meta + '</div>' +
-    '' +
     overview + decision + constraints + swot + actionPlan + kpiTracker + updateLog + cityBlocks +
     '<div class="footer">' +
     '<span class="footer-left">HTU · htu.edu.jo</span>' +

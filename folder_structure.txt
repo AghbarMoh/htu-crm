@@ -1,0 +1,173 @@
+Folder PATH listing
+Volume serial number is 9806-61E3
+C:\USERS\ASUS\DESKTOP\HTU-CRM\APP
+|   globals.css
+|   icon.png
+|   layout.js
+|   page.js
+|   
++---api
+|   +---activity
+|   |       route.js
+|   |       
+|   +---agent
+|   |   \---get-visits
+|   |           route.js
+|   |           
+|   +---analytics
+|   |       route.js
+|   |       
+|   +---applicants
+|   |   |   route.js
+|   |   |   
+|   |   \---completed
+|   |           route.js
+|   |           
+|   +---budget
+|   |   |   route.js
+|   |   |   
+|   |   \---export
+|   |           route.js
+|   |           
+|   +---chat
+|   |       route.js
+|   |       
+|   +---companions
+|   |   |   route.js
+|   |   |   
+|   |   \---export
+|   |           route.js
+|   |           
+|   +---contacts
+|   |       route.js
+|   |       
+|   +---dashboard
+|   |       route.js
+|   |       
+|   +---market-analysis
+|   |   |   route.js
+|   |   |   
+|   |   +---export
+|   |   |       route.js
+|   |   |       
+|   |   \---[id]
+|   |           route.js
+|   |           
+|   +---messaging
+|   |       route.js
+|   |       
+|   +---open-day
+|   |       route.js
+|   |       
+|   +---outreach
+|   |   |   route.js
+|   |   |   
+|   |   \---export
+|   |           route.js
+|   |           
+|   +---quote
+|   |       route.js
+|   |       
+|   +---schedule-reminder
+|   |       route.js
+|   |       
+|   +---send-reminder
+|   |       route.js
+|   |       
+|   +---storage
+|   |       route.js
+|   |       
+|   +---submit-student
+|   |       route.js
+|   |       
+|   +---tasks
+|   |       route.js
+|   |       
+|   +---visit-students
+|   |       route.js
+|   |       
+|   \---visits
+|       |   route.js
+|       |   
+|       \---export
+|               route.js
+|               
++---apply
+|   \---[visit_id]
+|           page.js
+|           
++---apply-openday
+|   \---[id]
+|           page.js
+|           
++---dashboard
+|   |   layout.js
+|   |   page.js
+|   |   
+|   +---activity
+|   |       page.js
+|   |       
+|   +---ai-assistant
+|   |       page.js
+|   |       
+|   +---analytics
+|   |       page.js
+|   |       
+|   +---applicants
+|   |   |   page.js
+|   |   |   
+|   |   +---completed
+|   |   |       page.js
+|   |   |       
+|   |   \---pending
+|   |           page.js
+|   |           
+|   +---archive
+|   |       page.js
+|   |       
+|   +---budget
+|   |       page.js
+|   |       
+|   +---companions
+|   |       page.js
+|   |       
+|   +---contacts
+|   |       page.js
+|   |       
+|   +---market-analysis
+|   |   |   page.js
+|   |   |   
+|   |   +---new
+|   |   |       page.js
+|   |   |       
+|   |   \---[id]
+|   |           page.js
+|   |           
+|   +---messaging
+|   |       page.js
+|   |       
+|   +---outreach
+|   |       page.js
+|   |       
+|   +---school-visits
+|   |       page.js
+|   |       
+|   +---settings
+|   |       page.js
+|   |       
+|   +---sop
+|   |   |   page.js
+|   |   |   
+|   |   \---open-day
+|   |       \---[id]
+|   |               page.js
+|   |               
+|   +---tasks
+|   |       page.js
+|   |       
+|   \---visit-students
+|           page.js
+|           
+\---login
+        page.js
+        
