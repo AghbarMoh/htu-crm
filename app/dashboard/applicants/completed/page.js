@@ -34,13 +34,6 @@ export default function CompletedApplicantsPage() {
     fetchApplicants()
   }
 
-  const parseExcelDate = (val) => {
-    if (!val) return null
-    if (typeof val === 'number') return new Date(Math.round((val - 25569) * 86400 * 1000)).toISOString()
-    const d = new Date(val)
-    return isNaN(d.getTime()) ? null : d.toISOString()
-  }
-
   const handleImport = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -53,20 +46,10 @@ export default function CompletedApplicantsPage() {
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
       const rows = XLSX.utils.sheet_to_json(sheet)
       const parsed = rows.map(row => ({
-        application_no: String(row['Application No'] || row['application_no'] || ''),
         full_name: row['Student Name'] || row['Student name'] || row['full_name'] || '',
-        email: row['Email'] || row['email'] || '',
-        phone: String(row['Phone number'] || row['Phone'] || row['phone'] || ''),
-        nationality: row['Nationality'] || row['nationality'] || '',
-        semester: row['Semester'] || row['semester'] || '',
-        year: row['Year'] ? String(row['Year']) : '',
-        electronic_payment_no: row['Electronic Payment No'] ? String(row['Electronic Payment No']) : '',
-        sign_up_date: parseExcelDate(row['Sign up Date']),
-        paid: (row['Paid'] || '').toString().toUpperCase() === 'YES',
-        how_did_you_hear: row['How did you first hear about (HTU) and early admission?'] || row['how_did_you_hear'] || '',
         major: row['Major'] || row['MAJOR'] || row['major'] || '',
-        payment_date: parseExcelDate(row['Payment Date']),
         school_name: row['School Name'] || row['school_name'] || '',
+        phone: String(row['Phone number'] || row['Phone'] || row['phone'] || ''),
         school_type: row['School type'] || row['School Type'] || row['school_type'] || '',
       })).filter(a => a.full_name)
       if (parsed.length === 0) { alert('No valid applicants found'); setImporting(false); e.target.value = ''; return }
@@ -124,12 +107,13 @@ export default function CompletedApplicantsPage() {
           <button
             onClick={async () => {
               if (!confirm('Delete ALL completed applicants? This cannot be undone.')) return
-              await fetch('/api/applicants/completed', {
+              const res = await fetch('/api/applicants/completed', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'delete_all_completed', payload: { count: applicants.length } })
               })
-              fetchApplicants()
+              const json = await res.json()
+              if (json.success) { fetchApplicants() } else { alert('Delete failed: ' + json.error) }
             }}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ef4444', cursor: 'pointer' }}
           >
@@ -164,34 +148,21 @@ export default function CompletedApplicantsPage() {
       <div style={s.card}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr>{['#', 'App No', 'Student Name', 'Email', 'Phone', 'Nationality', 'Major', 'Paid', 'Sign up Date', 'Payment Date', 'Matched'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+            <tr>{['#', 'Student Name', 'Major', 'School Name', 'Phone Number', 'School Type'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
+              <tr><td colSpan={6} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No completed applicants yet</td></tr>
+              <tr><td colSpan={6} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No completed applicants yet</td></tr>
             ) : filtered.map((a, i) => (
               <tr key={a.id} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                 <td style={{ ...s.td, width: '40px', color: 'rgba(255,255,255,0.3)' }}>{i + 1}</td>
-                <td style={s.td}>{a.application_no || '-'}</td>
                 <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{a.full_name}</td>
-                <td style={s.td}>{a.email || '-'}</td>
-                <td style={s.td}>{a.phone || '-'}</td>
-                <td style={s.td}>{a.nationality || '-'}</td>
                 <td style={s.td}>{a.major ? <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>{a.major}</span> : '-'}</td>
-                <td style={s.td}>
-                  <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: a.paid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: a.paid ? '#34d399' : '#f87171', whiteSpace: 'nowrap' }}>
-                    {a.paid ? 'YES' : 'NO'}
-                  </span>
-                </td>
-                <td style={s.td}>{a.sign_up_date ? new Date(a.sign_up_date).toLocaleDateString() : '-'}</td>
-                <td style={s.td}>{a.payment_date ? new Date(a.payment_date).toLocaleDateString() : '-'}</td>
-                <td style={s.td}>
-                  <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: a.is_matched ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)', color: a.is_matched ? '#60a5fa' : 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>
-                    {a.is_matched ? '✓ Matched' : 'No match'}
-                  </span>
-                </td>
+                <td style={s.td}>{a.school_name || '-'}</td>
+                <td style={s.td}>{a.phone || '-'}</td>
+                <td style={s.td}>{a.school_type || '-'}</td>
               </tr>
             ))}
           </tbody>
