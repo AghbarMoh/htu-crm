@@ -14,19 +14,24 @@ export async function GET() {
   const [
     { data: students, error: se }, 
     { data: visits, error: ve }, 
-    { data: completions, error: ce } // Added completion fetch
+    { data: completions, error: ce },
+    { data: outreachStudents, error: ose },
+    { data: outreachVisits, error: ove }
   ] = await Promise.all([
     supabase.from('visit_students').select('*').order('id', { ascending: false }),
     supabase.from('school_visits').select('id, school_name, visit_date'),
-    supabase.from('visit_completions').select('*'), // This fetches the "Done" records
+    supabase.from('visit_completions').select('*'),
+    supabase.from('outreach_students').select('*').order('id', { ascending: false }),
+    supabase.from('outreach_visits').select('id, name, date_from'),
   ])
 
   if (se) return NextResponse.json({ error: se.message }, { status: 500 })
   if (ve) return NextResponse.json({ error: ve.message }, { status: 500 })
-  if (ce) return NextResponse.json({ error: ce.message }, { status: 500 }) // Error check for completions
+  if (ce) return NextResponse.json({ error: ce.message }, { status: 500 })
+  if (ose) return NextResponse.json({ error: ose.message }, { status: 500 })
+  if (ove) return NextResponse.json({ error: ove.message }, { status: 500 })
 
-  // Return all three arrays to the frontend
-  return NextResponse.json({ students, visits, completions })
+  return NextResponse.json({ students, visits, completions, outreachStudents, outreachVisits })
 }
 
 // action: 'update' | 'delete'
@@ -35,11 +40,12 @@ export async function POST(req) {
   if (errorResponse) return errorResponse
 
   const supabase = createServiceClient()
-  const { action, payload } = await req.json()
+  const { action, payload, source } = await req.json()
+  const table = source === 'outreach' ? 'outreach_students' : 'visit_students'
 
   if (action === 'update') {
     const { id, ...rest } = payload
-    const { error } = await supabase.from('visit_students').update(rest).eq('id', id)
+    const { error } = await supabase.from(table).update(rest).eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     await logActivity('Edited visit student', 'visit_student', rest.full_name, 'Student record updated')
     return NextResponse.json({ success: true })
@@ -47,7 +53,7 @@ export async function POST(req) {
 
   if (action === 'delete') {
     const { id, full_name } = payload
-    const { error } = await supabase.from('visit_students').delete().eq('id', id)
+    const { error } = await supabase.from(table).delete().eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     await logActivity('Deleted visit student', 'visit_student', full_name, 'Student record removed')
     return NextResponse.json({ success: true })

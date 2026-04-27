@@ -26,14 +26,13 @@ supabase.from('applicants').select('*'),
     supabase.from('completed_applicants').select('school_name, major'),
   ])
 
-  // FILTER: Only completed/archived applicants (exclude status 'red' or 'green')
   const applicants = allApplicants || []
   const completedVisits = (visits || []).filter(v => 
     (completions || []).some(c => c.visit_id === v.id)
   )
 
   const stats = {
-    totalApplicants: applicants.length,
+    totalApplicants: (completedApplicants || []).length,
     totalVisits: completedVisits.length,
     totalLeads: (students || []).length,
     totalContacts: (contacts || []).length
@@ -139,12 +138,12 @@ function buildHtml(stats, majorRows, typeRows, schoolRows, engagementRows, logoS
     '.report-title { font-size: 26px; font-weight: 700; color: #ffffff; margin-bottom: 24px; }',
     '.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }',
     '.summary-card { background: #14141e; border: 1px solid rgba(255,255,255,0.15); border-left: 5px solid #D63027; border-radius: 8px; padding: 16px 20px; }',
-    '.summary-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #8888a8; margin-bottom: 6px; }',
+    '.summary-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #a0a0c0; margin-bottom: 6px; }',
     '.summary-value { font-size: 28px; font-weight: 700; color: #ffffff; }',
     '.section-title { font-size: 16px; font-weight: 700; color: #ffffff; border-left: 4px solid #D63027; padding-left: 12px; margin-bottom: 18px; text-transform: uppercase; letter-spacing: 0.5px; }',
     '.chart-container { background: #14141e; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 24px; margin-bottom: 32px; }',
     '.chart-row { display: flex; align-items: center; margin-bottom: 14px; }',
-    '.chart-label { width: 40%; font-size: 12px; color: #cccccc; padding-right: 12px; }',
+    '.chart-label { width: 40%; font-size: 12px; color: #ffffff; font-weight: 600; padding-right: 12px; }',
     '.chart-track { flex: 1; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; overflow: hidden; }',
     '.chart-fill { height: 100%; border-radius: 5px; }',
     '.chart-pct { width: 45px; text-align: right; font-size: 12px; font-weight: 700; color: #ffffff; padding-left: 10px; }',
@@ -169,7 +168,7 @@ function buildHtml(stats, majorRows, typeRows, schoolRows, engagementRows, logoS
   </div>
   <div style="font-size:12px;color:#8888a8;text-align:right;">Analytics Report<br>Generated ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
 </div>
-<div class="report-title">HTU Outreach Performance Analytics</div>
+<div class="report-title">2026 Performance Analytics</div>
 <div class="summary-grid">
   <div class="summary-card"><div class="summary-label">Total Applicants</div><div class="summary-value" style="color:#3b82f6;">${stats.totalApplicants}</div></div>
   <div class="summary-card"><div class="summary-label">Completed Visits</div><div class="summary-value" style="color:#f59e0b;">${stats.totalVisits}</div></div>

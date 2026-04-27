@@ -58,7 +58,7 @@ body {
 .shell { display: flex; height: 100vh; overflow: hidden; }
 
 .sidebar {
-  width: 228px;
+  width: 260px;
   flex-shrink: 0;
   background: var(--bg-panel);
   border-right: 1px solid var(--border-subtle);
@@ -66,62 +66,100 @@ body {
   flex-direction: column;
   padding: 0;
   position: relative;
+  /* subtle dot grid texture */
+  background-image: radial-gradient(circle, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 18px 18px;
 }
 
-/* subtle vertical glow on sidebar right edge */
+/* right edge glow */
 .sidebar::after {
   content: '';
   position: absolute;
   top: 0; right: -1px;
   width: 1px; height: 100%;
-  background: linear-gradient(to bottom, transparent, rgba(79,142,247,0.2) 40%, rgba(139,124,248,0.15) 70%, transparent);
+  background: linear-gradient(to bottom, transparent, rgba(79,142,247,0.3) 35%, rgba(139,124,248,0.2) 65%, transparent);
   pointer-events: none;
 }
 
+/* bottom ambient glow */
+.sidebar::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 180px;
+  background: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(79,142,247,0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .logo-zone {
-  padding: 22px 18px 18px;
+  padding: 22px 18px 20px;
   border-bottom: 1px solid var(--border-subtle);
+  position: relative;
+  z-index: 1;
+}
+
+/* glow behind logo zone */
+.logo-zone::after {
+  content: '';
+  position: absolute;
+  top: -10px; left: -10px; right: -10px;
+  height: 80px;
+  background: radial-gradient(ellipse 70% 80% at 30% 50%, rgba(79,142,247,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .logo-mark {
-  width: 34px; height: 34px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #1e3a6e, #2a2a5a);
-  border: 1px solid rgba(79,142,247,0.3);
+  width: 30%; height: auto;
   display: flex; align-items: center; justify-content: center;
-  margin-bottom: 11px;
+  margin-bottom: -12px;
+  position: relative;
+  z-index: 1;
 }
 
 .logo-name {
-  font-size: 14px; font-weight: 600;
+  font-size: 14px; font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.3px;
+  letter-spacing: -0.4px;
+  position: relative; z-index: 1;
 }
 
 .logo-sub {
-  font-size: 11px; color: var(--text-muted);
-  margin-top: 2px; line-height: 1.4;
+  font-size: 10px; color: var(--text-muted);
+  margin-top: 3px; line-height: 1.4;
+  letter-spacing: 0.1px;
+  position: relative; z-index: 1;
 }
 
 .nav-section {
   padding: 14px 10px 8px;
   flex: 1; overflow: auto; scrollbar-width: none;
+  position: relative; z-index: 1;
 }
 .nav-section::-webkit-scrollbar { display: none; }
 
 .nav-label {
-  font-size: 10px; font-weight: 600;
+  font-size: 9px; font-weight: 800;
   color: var(--text-muted);
-  letter-spacing: 0.8px; text-transform: uppercase;
+  letter-spacing: 1px; text-transform: uppercase;
   padding: 0 8px; margin-bottom: 5px; margin-top: 10px;
-  display: block;
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* decorative line after nav label */
+.nav-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-subtle), transparent);
 }
 
 .nav-item {
   display: flex; align-items: center; gap: 9px;
   padding: 8px 10px; border-radius: var(--radius-sm);
   margin-bottom: 1px; cursor: pointer;
-  font-size: 13px; color: var(--text-secondary);
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
   transition: all 0.15s ease;
   border: 1px solid transparent;
   text-decoration: none;
@@ -135,10 +173,11 @@ body {
 }
 
 .nav-item.active {
-  background: var(--accent-blue-dim);
+  background: linear-gradient(90deg, rgba(79,142,247,0.14), rgba(79,142,247,0.06));
   color: var(--accent-blue);
   border-color: rgba(79,142,247,0.2);
-  font-weight: 500;
+  font-weight: 700;
+  box-shadow: inset 0 0 20px rgba(79,142,247,0.04);
 }
 
 /* active left bar */
@@ -147,9 +186,20 @@ body {
   position: absolute;
   left: -10px; top: 50%;
   transform: translateY(-50%);
-  width: 3px; height: 16px;
-  background: var(--accent-blue);
+  width: 3px; height: 18px;
+  background: linear-gradient(180deg, #60a5fa, var(--accent-blue));
   border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 8px rgba(79,142,247,0.6);
+}
+
+/* active item pill glow */
+.nav-item.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+  background: radial-gradient(ellipse 60% 100% at 10% 50%, rgba(79,142,247,0.12) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .nav-icon { width: 15px; height: 15px; opacity: 0.6; flex-shrink: 0; transition: opacity 0.15s; }

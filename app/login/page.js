@@ -273,7 +273,7 @@ export default function LoginPage() {
                 margin: '0 0 6px 0',
                 letterSpacing: '-0.5px',
                 fontFamily: 'sans-serif',
-              }}>HTU CRM</h1>
+              }}>HTU SRO CRM</h1>
               <p style={{
                 fontSize: '14px',
                 color: 'rgba(255,255,255,0.4)',

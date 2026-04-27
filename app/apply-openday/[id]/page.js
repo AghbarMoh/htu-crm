@@ -15,15 +15,8 @@ export default function ApplyOpenDayPage() {
     phone: '',
     email: '',
     date_of_birth: '',
-    cause_of_visit: '',
     feedback: '',
   })
-
-  const causeOptions = [
-    'Inquiry about University / Major',
-    'University Tour',
-    'Instant Registration Booth',
-  ]
 
   useEffect(() => {
     const fetchOpenDay = async () => {
@@ -44,8 +37,8 @@ export default function ApplyOpenDayPage() {
   }
 
   const handleSubmit = async () => {
-    if (!form.full_name || !form.cause_of_visit) {
-      alert('Please fill in your full name and cause of visit.')
+    if (!form.full_name || !form.phone || !form.email || !form.date_of_birth || !form.feedback) {
+      alert('Please fill in all required fields.')
       return
     }
     setSubmitting(true)
@@ -93,7 +86,8 @@ export default function ApplyOpenDayPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', background: '#0a0a0f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+        <img src="/logo.png" alt="HTU Logo" style={{ height: '48px', width: 'auto', opacity: 0.6, display: 'block', margin: '0 auto' }} />
         <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.25)' }}>Loading...</div>
       </div>
     )
@@ -101,7 +95,8 @@ export default function ApplyOpenDayPage() {
 
   if (!openDay) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ minHeight: '100vh', background: '#0a0a0f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', gap: '16px' }}>
+        <img src="/logo.png" alt="HTU Logo" style={{ height: '48px', width: 'auto', opacity: 0.5, display: 'block', margin: '0 auto' }} />
         <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '15px' }}>
           This open day link is invalid or has expired.
         </div>
@@ -113,8 +108,9 @@ export default function ApplyOpenDayPage() {
     return (
       <div style={{ minHeight: '100vh', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'Inter, system-ui, sans-serif' }}>
         <div style={{ textAlign: 'center', maxWidth: '360px' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(62,207,142,0.15)', border: '1px solid rgba(62,207,142,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <CheckCircle size={30} color="#3ecf8e" />
+          <img src="/logo.png" alt="HTU Logo" style={{ height: '56px', width: 'auto', marginBottom: '20px', display: 'block', margin: '0 auto 20px auto' }} />
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(214,48,39,0.15)', border: '1px solid rgba(214,48,39,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <CheckCircle size={30} color="#D63027" />
           </div>
           <div style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', marginBottom: '10px' }}>Thank you!</div>
           <div style={{ fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: '1.6' }}>
@@ -129,19 +125,17 @@ export default function ApplyOpenDayPage() {
     <div style={{ minHeight: '100vh', background: '#0a0a0f', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '32px 20px 48px', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ width: '100%', maxWidth: '480px' }}>
 
-        {/* Header */}
+        {/* HTU Branded Header */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '52px', height: '52px', borderRadius: '14px', background: 'linear-gradient(135deg, #1e3a6e, #2a2a5a)', border: '1px solid rgba(79,142,247,0.3)', marginBottom: '16px' }}>
-            <span style={{ fontSize: '22px' }}>🎓</span>
+          <img src="/logo.png" alt="HTU Logo" style={{ height: '64px', width: 'auto', marginBottom: '16px', display: 'block', margin: '0 auto 16px auto' }} />
+          <div style={{ fontSize: '14px', fontWeight: '700', color: '#D63027', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
+            Al-Hussein Technical University
           </div>
           <div style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', letterSpacing: '-0.4px', marginBottom: '6px' }}>
             {openDay.label}
           </div>
           <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.35)' }}>
             {formatDate(openDay.event_date)}
-          </div>
-          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.25)', marginTop: '4px' }}>
-            Hussein Technical University
           </div>
         </div>
 
@@ -165,7 +159,7 @@ export default function ApplyOpenDayPage() {
             </div>
 
             <div>
-              <label style={labelStyle}>Email Address <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 400 }}>(optional)</span></label>
+              <label style={labelStyle}>Email Address *</label>
               <input style={inputStyle} type="email" placeholder="your@email.com" value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })} />
             </div>
@@ -176,19 +170,10 @@ export default function ApplyOpenDayPage() {
                 onChange={e => setForm({ ...form, date_of_birth: e.target.value })} />
             </div>
 
-            <div>
-              <label style={labelStyle}>Cause of Visit *</label>
-              <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.cause_of_visit}
-                onChange={e => setForm({ ...form, cause_of_visit: e.target.value })}>
-                <option value="" style={{ background: '#0f0f17', color: '#fff' }}>Select a reason...</option>
-                {causeOptions.map(opt => (
-                  <option key={opt} value={opt} style={{ background: '#0f0f17', color: '#fff' }}>{opt}</option>
-                ))}
-              </select>
-            </div>
+            {/* Cause of Visit removed */}
 
             <div>
-              <label style={labelStyle}>Feedback <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 400 }}>(optional)</span></label>
+              <label style={labelStyle}>Feedback *</label>
               <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: '100px', lineHeight: '1.6' }}
                 placeholder="What did you gain from today's open day? Any thoughts or suggestions..."
                 value={form.feedback}
@@ -201,7 +186,7 @@ export default function ApplyOpenDayPage() {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            style={{ width: '100%', marginTop: '26px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '13px', padding: '15px', fontSize: '15px', fontWeight: '700', color: '#ffffff', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, fontFamily: 'inherit', letterSpacing: '-0.2px' }}
+            style={{ width: '100%', marginTop: '26px', background: '#D63027', border: 'none', borderRadius: '13px', padding: '15px', fontSize: '15px', fontWeight: '700', color: '#ffffff', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, fontFamily: 'inherit', letterSpacing: '-0.2px', boxShadow: '0 4px 16px rgba(214,48,39,0.3)' }}
           >
             {submitting ? 'Submitting...' : 'Submit'}
           </button>

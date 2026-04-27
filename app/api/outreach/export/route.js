@@ -21,7 +21,7 @@ function renderSection(title, content) {
   if (!content || (typeof content === 'string' && !content.trim())) return ''
   return `<div style="margin-bottom:24px;">
     <div style="font-size:13px;font-weight:700;color:#ffffff;border-left:4px solid #D63027;padding-left:12px;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.3px;">${title}</div>
-    <div dir="auto" style="font-size:13px;color:#cccccc;line-height:1.7;white-space:pre-wrap;">${esc(content)}</div>
+    <div dir="auto" style="font-size:13px;font-weight:600;color:#ffffff;line-height:1.7;white-space:pre-wrap;">${esc(content)}</div>
   </div>`
 }
 
@@ -30,9 +30,9 @@ function renderSchoolsTable(schools) {
   
   const rows = schools.map(s => `
     <tr>
-      <td dir="auto" style="padding:10px; border:1px solid rgba(255,255,255,0.15); color:#cccccc;">${esc(s.schoolName)}</td>
-      <td dir="auto" style="padding:10px; border:1px solid rgba(255,255,255,0.15); color:#cccccc;">${esc(s.counselor)}</td>
-      <td dir="auto" style="padding:10px; border:1px solid rgba(255,255,255,0.15); color:#cccccc;">${esc(s.email)}</td>
+      <td dir="auto" style="padding:10px; border:1px solid rgba(255,255,255,0.15); color:#ffffff; font-weight:600;">${esc(s.schoolName)}</td>
+      <td dir="auto" style="padding:10px; border:1px solid rgba(255,255,255,0.15); color:#ffffff; font-weight:600;">${esc(s.counselor)}</td>
+      <td dir="auto" style="padding:10px; border:1px solid rgba(255,255,255,0.15); color:#ffffff; font-weight:600;">${esc(s.email)}</td>
     </tr>
   `).join('')
 
@@ -65,18 +65,18 @@ function buildHtml(visit, completion, sections, logoSrc) {
   const css = [
     "* { box-sizing: border-box; margin: 0; padding: 0; }",
     "html, body { min-height: 100vh; background: #0a0a0f; margin: 0; }",
-    "body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #eeeef5; padding: 20mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
+    "body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; font-size: 13px; font-weight: 500; color: #ffffff; padding: 20mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
     ".header { display: flex; align-items: center; justify-content: space-between; padding: 0 0 20px 0; border-bottom: 3px solid #D63027; margin-bottom: 32px; }",
-    ".header-logo { font-size: 19px; font-weight: 700; color: #ffffff; }",
-    ".header-sub { font-size: 12px; color: #8888a8; margin-top: 4px; }",
-    ".report-title { font-size: 26px; font-weight: 700; color: #ffffff; margin-bottom: 8px; }",
-    ".report-sub { font-size: 14px; color: #8888a8; margin-bottom: 32px; }",
+    ".header-logo { font-size: 19px; font-weight: 800; color: #ffffff; }",
+    ".header-sub { font-size: 12px; font-weight: 600; color: #a0a0b0; margin-top: 4px; }",
+    ".report-title { font-size: 26px; font-weight: 800; color: #ffffff; margin-bottom: 8px; }",
+    ".report-sub { font-size: 14px; font-weight: 600; color: #a0a0b0; margin-bottom: 32px; }",
     ".meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; background: #14141e; border: 1px solid rgba(255,255,255,0.15); border-left: 5px solid #D63027; border-radius: 8px; padding: 20px 24px; margin-bottom: 32px; }",
     ".meta-item { display: flex; flex-direction: column; gap: 4px; }",
-    ".meta-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #8888a8; }",
-    ".meta-value { font-size: 14px; color: #ffffff; }",
-    ".footer { margin-top: 60px; padding-top: 20px; border-top: 2px solid rgba(255,255,255,0.15); font-size: 11px; color: #8888a8; display: flex; align-items: center; justify-content: space-between; }",
-    ".footer-left { color: #D63027; font-weight: 600; font-size: 12px; }",
+    ".meta-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #a0a0b0; }",
+    ".meta-value { font-size: 14px; font-weight: 600; color: #ffffff; }",
+    ".footer { margin-top: 60px; padding-top: 20px; border-top: 2px solid rgba(255,255,255,0.15); font-size: 12px; font-weight: 600; color: #a0a0b0; display: flex; align-items: center; justify-content: space-between; }",
+    ".footer-left { color: #D63027; font-weight: 800; font-size: 12px; }",
   ].join(' ')
 
   const meta = [

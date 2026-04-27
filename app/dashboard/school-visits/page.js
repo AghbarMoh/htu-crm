@@ -363,7 +363,7 @@ const cancelledVisits = filteredVisits.filter(v => v.is_cancelled)
                       <button onClick={() => handleEdit(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Pencil size={14} /></button>
                       <button onClick={() => handleCancel(visit.id)} title="Cancel Visit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b' }}>✕</button>
                       <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Trash2 size={14} /></button>
-                      <button onClick={() => window.open('/api/visits/export?filter=all', '_blank')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><FileText size={14} /></button>
+                      <button onClick={() => window.open(`/api/visits/export?visit_id=${visit.id}`, '_blank')} title="Export School Report" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><FileText size={14} /></button>
                     </div>
                   </td>
                 </tr>
@@ -419,7 +419,7 @@ const cancelledVisits = filteredVisits.filter(v => v.is_cancelled)
                         <button onClick={() => handleUndoComplete(visit.id)} title="Undo Completion" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b' }}><RotateCcw size={14} /></button>
                         <button onClick={() => handleEdit(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Pencil size={14} /></button>
                         <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Trash2 size={14} /></button>
-                        <button onClick={() => window.open('/api/visits/export?filter=all', '_blank')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><FileText size={14} /></button>
+                        <button onClick={() => window.open(`/api/visits/export?visit_id=${visit.id}`, '_blank')} title="Export School Report" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><FileText size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -584,7 +584,7 @@ const cancelledVisits = filteredVisits.filter(v => v.is_cancelled)
 
             <div style={{ background: '#ffffff', padding: '16px', borderRadius: '16px', display: 'inline-block', marginBottom: '24px' }}>
               <QRCodeSVG
-                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/apply/${qrVisit.id}`}
+                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/apply/${qrVisit.id}?mode=school`}
                 size={200}
                 bgColor={"#ffffff"}
                 fgColor={"#000000"}
@@ -598,11 +598,11 @@ const cancelledVisits = filteredVisits.filter(v => v.is_cancelled)
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 12px', marginBottom: '20px' }}>
               <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', flex: 1, wordBreak: 'break-all' }}>
-                {typeof window !== 'undefined' ? `${window.location.origin}/apply/${qrVisit.id}` : ''}
+                {typeof window !== 'undefined' ? `${window.location.origin}/apply/${qrVisit.id}?mode=school` : ''}
               </span>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}/apply/${qrVisit.id}`)
+                  navigator.clipboard.writeText(`${window.location.origin}/apply/${qrVisit.id}?mode=school`)
                   alert('Link copied!')
                 }}
                 style={{ background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', fontWeight: '600', color: '#60a5fa', cursor: 'pointer', whiteSpace: 'nowrap' }}

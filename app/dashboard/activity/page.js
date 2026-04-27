@@ -58,7 +58,6 @@ export default function ActivityPage() {
       contact: { bg: 'rgba(236,72,153,0.15)', color: '#f472b6' },
       task: { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24' },
       messaging: { bg: 'rgba(16,185,129,0.15)', color: '#34d399' },
-      archive: { bg: 'rgba(239,68,68,0.15)', color: '#f87171' },
     }
     return colors[type] || { bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }
   }
@@ -67,7 +66,7 @@ export default function ActivityPage() {
     if (action?.includes('Added') || action?.includes('Imported')) return '+'
     if (action?.includes('Edited')) return '✎'
     if (action?.includes('Deleted')) return '×'
-    if (action?.includes('Completed') || action?.includes('Archived')) return '✓'
+    if (action?.includes('Completed')) return '✓'
     if (action?.includes('Sent')) return '→'
     return '•'
   }

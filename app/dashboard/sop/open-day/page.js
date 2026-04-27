@@ -75,15 +75,24 @@ export default function OpenDayPage() {
     const win = window.open('', '_blank')
     win.document.write(`
       <html><head><title>QR - ${day.label}</title>
-      <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:Inter,sans-serif;background:#fff;}
-      h2{margin-bottom:8px;font-size:22px;}p{color:#555;margin-bottom:24px;font-size:15px;}
-      img{width:240px;height:240px;}
+      <style>
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: Inter, sans-serif; background: #ffffff; }
+        .logo { height: 60px; margin-bottom: 10px; }
+        h2 { margin-bottom: 4px; font-size: 22px; color: #D63027; font-weight: 700; }
+        p.date { color: #666666; margin-bottom: 18px; font-size: 15px; }
+        .qr-wrap { padding: 14px; border: 3px solid #D63027; border-radius: 16px; margin-bottom: 10px; background: #ffffff; }
+        img.qr { width: 240px; height: 240px; display: block; }
+        .tagline { color: #D63027; font-weight: 700; font-size: 16px; margin-bottom: 16px; letter-spacing: 0.5px; }
+        .url { margin-top: 12px; font-size: 11px; color: #999999; word-break: break-all; max-width: 400px; text-align: center; }
       </style></head>
       <body>
+        <img class="logo" src="/logo.png" alt="HTU" />
         <h2>${day.label}</h2>
-        <p>${formatDate(day.event_date)}</p>
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(url)}" />
-        <p style="margin-top:20px;font-size:12px;color:#999;">${url}</p>
+        <p class="date">${formatDate(day.event_date)}</p>
+        <div class="qr-wrap">
+          <img class="qr" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&color=D63027&data=${encodeURIComponent(url)}" />
+        </div>
+        <p class="url">${url}</p>
         <script>window.onload=()=>window.print()</script>
       </body></html>
     `)
@@ -199,41 +208,52 @@ export default function OpenDayPage() {
       {/* QR Modal */}
       {showQR && activeQR && (
         <div style={s.modal} onClick={() => setShowQR(false)}>
-          <div style={{ ...s.modalCard, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0' }}>{activeQR.label}</h2>
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '0 0 24px 0' }}>{formatDate(activeQR.event_date)}</p>
+          <div style={{ ...s.modalCard, textAlign: 'center', background: '#ffffff', border: 'none' }} onClick={e => e.stopPropagation()}>
+            <div style={{ marginBottom: '12px' }}>
+              <img src="/logo.png" alt="HTU Logo" style={{ height: '52px', width: 'auto' }} />
+            </div>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#D63027', margin: '0 0 4px 0' }}>{activeQR.label}</h2>
+            <p style={{ fontSize: '13px', color: '#666666', margin: '0 0 16px 0' }}>{formatDate(activeQR.event_date)}</p>
 
-            <div style={{ background: '#ffffff', padding: '18px', borderRadius: '16px', display: 'inline-block', marginBottom: '20px' }}>
+            <div style={{ background: '#ffffff', padding: '14px', borderRadius: '16px', display: 'inline-block', marginBottom: '10px', border: '3px solid #D63027' }}>
               <QRCodeSVG
                 value={getQRUrl(activeQR.id)}
-                size={210}
+                size={200}
                 bgColor="#ffffff"
-                fgColor="#000000"
+                fgColor="#D63027"
                 level="H"
+                imageSettings={{
+                  src: '/logo.png',
+                  height: 40,
+                  width: 40,
+                  excavate: true,
+                }}
               />
             </div>
 
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 14px 0', lineHeight: '1.6' }}>
-              Students scan this code to submit their visit information.
+        
+
+            <p style={{ fontSize: '12px', color: '#888888', margin: '0 0 14px 0', lineHeight: '1.5' }}>
+              Scan this code to submit your visit information
             </p>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px 12px', marginBottom: '16px' }}>
-              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', flex: 1, wordBreak: 'break-all', textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '10px 12px', marginBottom: '16px' }}>
+              <span style={{ fontSize: '12px', color: '#666666', flex: 1, wordBreak: 'break-all', textAlign: 'left' }}>
                 {getQRUrl(activeQR.id)}
               </span>
               <button onClick={() => { navigator.clipboard.writeText(getQRUrl(activeQR.id)); alert('Link copied!') }}
-                style={{ background: 'rgba(79,142,247,0.15)', border: '1px solid rgba(79,142,247,0.3)', borderRadius: '8px', padding: '5px 11px', fontSize: '12px', fontWeight: '600', color: '#4f8ef7', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                style={{ background: 'rgba(214,48,39,0.1)', border: '1px solid rgba(214,48,39,0.3)', borderRadius: '8px', padding: '5px 11px', fontSize: '12px', fontWeight: '600', color: '#D63027', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 Copy Link
               </button>
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => handlePrintQR(activeQR)}
-                style={{ flex: 1, background: 'rgba(139,124,248,0.15)', border: '1px solid rgba(139,124,248,0.3)', borderRadius: '10px', padding: '10px', fontSize: '13px', fontWeight: '600', color: '#8b7cf8', cursor: 'pointer' }}>
+                style={{ flex: 1, background: '#D63027', border: 'none', borderRadius: '10px', padding: '10px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
                 Print QR
               </button>
               <button onClick={() => setShowQR(false)}
-                style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
+                style={{ flex: 1, background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '10px', fontSize: '13px', fontWeight: '600', color: '#666666', cursor: 'pointer' }}>
                 Close
               </button>
             </div>

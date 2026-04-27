@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Upload, Search, Archive } from 'lucide-react'
+import { Upload, Search, Trash2 } from 'lucide-react'
 
 export default function CompletedApplicantsPage() {
   const [applicants, setApplicants] = useState([])
@@ -11,25 +11,22 @@ export default function CompletedApplicantsPage() {
   const [filterSchoolName, setFilterSchoolName] = useState('all')
   const [filterSchoolType, setFilterSchoolType] = useState('all')
   const [filterMatched, setFilterMatched] = useState('all')
-  const [showArchiveModal, setShowArchiveModal] = useState(false)
-  const [archiveLabel, setArchiveLabel] = useState('')
-  const [archiving, setArchiving] = useState(false)
 
-  const majors = ['Energy Engineering', 'Electrical Engineering', 'Game Design and Development', 'Architectural Engineering', 'Cyber Security', 'Computer Science', 'Data Science and AI', 'Industrial Engineering']
+  const majors = ['Energy Engineering', 'Electrical Engineering', 'Game Design and Development', 'Architectural Engineering', 'Cyber Security', 'Computer Science', 'Data Science and Artificial Intelligence', 'Industrial Engineering', 'Mechanical Engineering']
 
   useEffect(() => { fetchApplicants(); runCrossReference() }, [])
 
   const fetchApplicants = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/applicants/completed?archived=false')
+      const res = await fetch('/api/applicants/completed')
       const json = await res.json()
       if (json.data) setApplicants(json.data)
     } finally { setLoading(false) }
   }
 
   const runCrossReference = async () => {
-    await fetch('/api/applicants', {
+    await fetch('/api/applicants/completed', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'cross_reference_completed', payload: {} })
@@ -58,13 +55,22 @@ export default function CompletedApplicantsPage() {
       const parsed = rows.map(row => ({
         application_no: String(row['Application No'] || row['application_no'] || ''),
         full_name: row['Student Name'] || row['Student name'] || row['full_name'] || '',
-        major: row['Major'] || row['MAJOR'] || row['major'] || '',
-        school_name: row['School Name'] || row['school_name'] || '',
+        email: row['Email'] || row['email'] || '',
         phone: String(row['Phone number'] || row['Phone'] || row['phone'] || ''),
+        nationality: row['Nationality'] || row['nationality'] || '',
+        semester: row['Semester'] || row['semester'] || '',
+        year: row['Year'] ? String(row['Year']) : '',
+        electronic_payment_no: row['Electronic Payment No'] ? String(row['Electronic Payment No']) : '',
+        sign_up_date: parseExcelDate(row['Sign up Date']),
+        paid: (row['Paid'] || '').toString().toUpperCase() === 'YES',
+        how_did_you_hear: row['How did you first hear about (HTU) and early admission?'] || row['how_did_you_hear'] || '',
+        major: row['Major'] || row['MAJOR'] || row['major'] || '',
+        payment_date: parseExcelDate(row['Payment Date']),
+        school_name: row['School Name'] || row['school_name'] || '',
         school_type: row['School type'] || row['School Type'] || row['school_type'] || '',
       })).filter(a => a.full_name)
       if (parsed.length === 0) { alert('No valid applicants found'); setImporting(false); e.target.value = ''; return }
-      const res = await fetch('/api/applicants', {
+      const res = await fetch('/api/applicants/completed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'import_completed', payload: { rows: parsed, filename: file.name } })
@@ -81,25 +87,11 @@ export default function CompletedApplicantsPage() {
     reader.readAsArrayBuffer(file)
   }
 
-  const handleArchive = async () => {
-    if (!archiveLabel.trim()) { alert('Please enter an archive label'); return }
-    setArchiving(true)
-    const res = await fetch('/api/applicants', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'archive_completed', payload: { label: archiveLabel, count: applicants.length } })
-    })
-    const json = await res.json()
-    if (json.success) { fetchApplicants(); setShowArchiveModal(false); setArchiveLabel('') }
-    else alert('Archive failed: ' + json.error)
-    setArchiving(false)
-  }
-
   const uniqueSchoolNames = ['all', ...new Set(applicants.map(a => a.school_name).filter(Boolean))]
   const uniqueSchoolTypes = ['all', ...new Set(applicants.map(a => a.school_type).filter(Boolean))]
 
   const filtered = applicants.filter(a => {
-    const matchSearch = !search || a.full_name?.toLowerCase().includes(search.toLowerCase()) || a.application_no?.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = !search || a.full_name?.toLowerCase().includes(search.toLowerCase()) || a.application_no?.toLowerCase().includes(search.toLowerCase()) || a.email?.toLowerCase().includes(search.toLowerCase())
     const matchMajor = filterMajor === 'all' || a.major === filterMajor
     const matchSchoolName = filterSchoolName === 'all' || a.school_name === filterSchoolName
     const matchSchoolType = filterSchoolType === 'all' || a.school_type === filterSchoolType
@@ -125,13 +117,24 @@ export default function CompletedApplicantsPage() {
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>{filtered.length} applicant{filtered.length !== 1 ? 's' : ''}</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setShowArchiveModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#f59e0b', cursor: 'pointer' }}>
-            <Archive size={16} /> Archive
-          </button>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: importing ? 'not-allowed' : 'pointer', opacity: importing ? 0.6 : 1 }}>
             <Upload size={16} /> {importing ? 'Importing...' : 'Import Excel'}
             <input type="file" accept=".xlsx,.xls" onChange={handleImport} style={{ display: 'none' }} disabled={importing} />
           </label>
+          <button
+            onClick={async () => {
+              if (!confirm('Delete ALL completed applicants? This cannot be undone.')) return
+              await fetch('/api/applicants/completed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete_all_completed', payload: { count: applicants.length } })
+              })
+              fetchApplicants()
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ef4444', cursor: 'pointer' }}
+          >
+            <Trash2 size={16} /> Delete All
+          </button>
         </div>
       </div>
 
@@ -161,22 +164,29 @@ export default function CompletedApplicantsPage() {
       <div style={s.card}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr>{['#', 'App No', 'Student Name', 'Major', 'School Name', 'School Type', 'Phone', 'Matched'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+            <tr>{['#', 'App No', 'Student Name', 'Email', 'Phone', 'Nationality', 'Major', 'Paid', 'Sign up Date', 'Payment Date', 'Matched'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
+              <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No completed applicants yet</td></tr>
+              <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No completed applicants yet</td></tr>
             ) : filtered.map((a, i) => (
               <tr key={a.id} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                 <td style={{ ...s.td, width: '40px', color: 'rgba(255,255,255,0.3)' }}>{i + 1}</td>
                 <td style={s.td}>{a.application_no || '-'}</td>
                 <td style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{a.full_name}</td>
-                <td style={s.td}>{a.major ? <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>{a.major}</span> : '-'}</td>
-                <td style={s.td}>{a.school_name || '-'}</td>
-                <td style={s.td}>{a.school_type || '-'}</td>
+                <td style={s.td}>{a.email || '-'}</td>
                 <td style={s.td}>{a.phone || '-'}</td>
+                <td style={s.td}>{a.nationality || '-'}</td>
+                <td style={s.td}>{a.major ? <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>{a.major}</span> : '-'}</td>
+                <td style={s.td}>
+                  <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: a.paid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: a.paid ? '#34d399' : '#f87171', whiteSpace: 'nowrap' }}>
+                    {a.paid ? 'YES' : 'NO'}
+                  </span>
+                </td>
+                <td style={s.td}>{a.sign_up_date ? new Date(a.sign_up_date).toLocaleDateString() : '-'}</td>
+                <td style={s.td}>{a.payment_date ? new Date(a.payment_date).toLocaleDateString() : '-'}</td>
                 <td style={s.td}>
                   <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: a.is_matched ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)', color: a.is_matched ? '#60a5fa' : 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>
                     {a.is_matched ? '✓ Matched' : 'No match'}
@@ -187,25 +197,6 @@ export default function CompletedApplicantsPage() {
           </tbody>
         </table>
       </div>
-
-      {showArchiveModal && (
-        <div style={s.modal}>
-          <div style={s.modalCard}>
-            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: '0 0 8px 0' }}>Archive Completed Applicants</h2>
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '0 0 20px 0' }}>This will archive all {applicants.length} completed applicants and clear the list.</p>
-            <div>
-              <label style={s.label}>Archive Label *</label>
-              <input type="text" value={archiveLabel} onChange={(e) => setArchiveLabel(e.target.value)} placeholder="e.g. Semester 1 - 2026" style={s.input} />
-            </div>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-              <button onClick={handleArchive} disabled={archiving} style={{ flex: 1, background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer', opacity: archiving ? 0.5 : 1 }}>
-                {archiving ? 'Archiving...' : 'Archive & Clear'}
-              </button>
-              <button onClick={() => { setShowArchiveModal(false); setArchiveLabel('') }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

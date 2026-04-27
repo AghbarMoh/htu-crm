@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, Upload, Search, Archive } from 'lucide-react'
+import { Plus, Pencil, Trash2, Upload, Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export default function PendingApplicantsPage() {
@@ -13,12 +13,9 @@ export default function PendingApplicantsPage() {
   const [filterNationality, setFilterNationality] = useState('all')
   const [search, setSearch] = useState('')
   const [importing, setImporting] = useState(false)
-  const [showArchiveModal, setShowArchiveModal] = useState(false)
-  const [archiveLabel, setArchiveLabel] = useState('')
-  const [archiving, setArchiving] = useState(false)
   const router = useRouter()
 
-  const majors = ['Energy Engineering', 'Electrical Engineering', 'Game Design and Development', 'Architectural Engineering', 'Cyber Security', 'Computer Science', 'Data Science and AI', 'Industrial Engineering']
+  const majors = ['Energy Engineering', 'Electrical Engineering', 'Game Design and Development', 'Architectural Engineering', 'Cyber Security', 'Computer Science', 'Data Science and Artificial Intelligence', 'Industrial Engineering', 'Mechanical Engineering']
 
   const emptyForm = { full_name: '', phone: '', email: '', nationality: '', semester: '', year: '', electronic_payment_no: '', application_no: '', application_date: '', payment_date: '', paid: false, heard_about_htu: '', major: '', status: 'red', notes: '' }
   const [form, setForm] = useState(emptyForm)
@@ -28,7 +25,7 @@ export default function PendingApplicantsPage() {
   const fetchApplicants = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/applicants?archived=false')
+      const res = await fetch('/api/applicants')
       const json = await res.json()
       if (json.data) setApplicants(json.data)
     } catch (error) {
@@ -140,25 +137,6 @@ export default function PendingApplicantsPage() {
     reader.readAsArrayBuffer(file)
   }
 
-  const handleArchive = async () => {
-    if (!archiveLabel) { alert('Please enter a label for this archive'); return }
-    setArchiving(true)
-    const res = await fetch('/api/applicants', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'archive', payload: { label: archiveLabel, count: applicants.length } })
-    })
-    const json = await res.json()
-    if (json.success) {
-      alert('Successfully archived ' + applicants.length + ' applicants')
-      setShowArchiveModal(false)
-      setArchiveLabel('')
-      fetchApplicants()
-    } else {
-      alert('Error archiving: ' + json.error)
-    }
-    setArchiving(false)
-  }
 
   const nationalities = [...new Set(applicants.map(a => a.nationality).filter(Boolean))].sort()
 
@@ -198,14 +176,19 @@ export default function PendingApplicantsPage() {
             <input type="file" accept=".xlsx,.xls" onChange={handleImport} style={{ display: 'none' }} />
           </label>
           <button
-            onClick={() => setShowArchiveModal(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', color: '#f59e0b', cursor: 'pointer' }}
+            onClick={async () => {
+              if (!confirm('Delete ALL pending applicants? This cannot be undone.')) return
+              await fetch('/api/applicants', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete_all', payload: { count: applicants.length } })
+              })
+              fetchApplicants()
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', color: '#ef4444', cursor: 'pointer' }}
           >
-            <Archive size={14} />
-            Archive
-          </button>
-          <button onClick={() => router.push('/dashboard/archive')} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: '10px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', color: '#a78bfa', cursor: 'pointer' }}>
-            View Archives
+            <Trash2 size={14} />
+            Delete All
           </button>
           <button onClick={() => { setShowForm(true); setEditingApplicant(null); setForm(emptyForm) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer' }}>
             <Plus size={16} />
@@ -247,7 +230,7 @@ export default function PendingApplicantsPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1400px' }}>
           <thead>
             <tr>
-              {['Name', 'Phone', 'Email', 'Nationality', 'Semester', 'Year', 'Payment No', 'App No', 'Sign Up Date', 'Payment Date', 'Paid', 'Heard About HTU', 'Major', 'Notes', 'Status', 'Actions'].map(h => (
+              {['Name', 'Phone', 'Email', 'Nationality', 'Semester', 'Year', 'Payment No', 'Application No', 'Sign Up Date', 'Payment Date', 'Paid', 'Heard About HTU', 'Major', 'Notes', 'Status', 'Actions'].map(h => (
                 <th key={h} style={s.th}>{h}</th>
               ))}
             </tr>
@@ -365,36 +348,6 @@ export default function PendingApplicantsPage() {
                 {editingApplicant ? 'Save Changes' : 'Add Applicant'}
               </button>
               <button onClick={() => { setShowForm(false); setEditingApplicant(null); setForm(emptyForm) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Archive Modal */}
-      {showArchiveModal && (
-        <div style={s.modal}>
-          <div style={{ ...s.modalCard, maxWidth: '400px' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: '0 0 8px 0' }}>Archive Applicants</h2>
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '0 0 20px 0' }}>
-              This will archive all {applicants.length} current applicants and clear the list.
-            </p>
-            <div>
-              <label style={s.label}>Archive Label *</label>
-              <input
-                type="text"
-                value={archiveLabel}
-                onChange={(e) => setArchiveLabel(e.target.value)}
-                placeholder="e.g. Week 1 - March 2026"
-                style={s.input}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-              <button onClick={handleArchive} disabled={archiving} style={{ flex: 1, background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: '#ffffff', cursor: 'pointer', opacity: archiving ? 0.5 : 1 }}>
-                {archiving ? 'Archiving...' : 'Archive & Clear'}
-              </button>
-              <button onClick={() => { setShowArchiveModal(false); setArchiveLabel('') }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
                 Cancel
               </button>
             </div>

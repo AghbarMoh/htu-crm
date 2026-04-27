@@ -9,7 +9,7 @@ const inter = Inter({
 });
  
 export const metadata = {
-  title: "HTU CRM",
+  title: "HTU SRO CRM",
   description: "Students Recruitement & Outreach Office",
   manifest: "/manifest.json",
   themeColor: "#0a0a0f",

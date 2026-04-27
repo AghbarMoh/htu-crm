@@ -36,7 +36,7 @@ export default function MessagingPage() {
 
   const fetchApplicants = async () => {
     try {
-      const res = await fetch('/api/applicants?archived=false')
+      const res = await fetch('/api/applicants')
       const json = await res.json()
       if (json.data) setApplicants(json.data)
     } catch (err) { console.error(err) }

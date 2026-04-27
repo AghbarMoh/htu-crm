@@ -1,6 +1,6 @@
 {
-  "name": "HTU CRM",
-  "short_name": "HTU CRM",
+  "name": "HTU SRO CRM",
+  "short_name": "HTU SRO CRM",
   "description": "Students Recruitment & Outreach Office",
   "start_url": "/dashboard",
   "display": "standalone",

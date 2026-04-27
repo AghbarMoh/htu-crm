@@ -44,7 +44,7 @@ function buildHtml(visits, completions, students, logoSrc, title) {
       <td>${esc(v.companion || '—')}</td>
       <td style="color:${done ? '#3ecf8e' : '#f06595'};font-weight:700;">${done ? '✓ Done' : 'Pending'}</td>
       <td style="text-align:center;font-weight:600;">${studentCount}</td>
-      <td style="font-size:12px;color:#8888a8;min-width:180px;">${esc(done?.comment || '—')}</td>
+      <td style="font-size:12px;color:#ffffff;font-weight:700;min-width:180px;">${esc(done?.comment || '—')}</td>
     </tr>`
   }).join('')
 
@@ -69,23 +69,23 @@ function buildHtml(visits, completions, students, logoSrc, title) {
     /* Force background color to fill browser viewport and paper */
     "html, body { min-height: 100vh; background: #0a0a0f; margin: 0; }",
     /* Body padding handles the 'margin' visually while allowing background bleed */
-    "body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #eeeef5; padding: 20mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
+    "body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; font-size: 13px; font-weight: 500; color: #ffffff; padding: 20mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
     '.header { display: flex; align-items: center; justify-content: space-between; padding: 0 0 20px 0; border-bottom: 3px solid #D63027; margin-bottom: 32px; }',
-    '.header-logo { font-size: 19px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px; }',
-    '.header-sub { font-size: 12px; color: #8888a8; margin-top: 4px; }',
-    '.report-title { font-size: 26px; font-weight: 700; color: #ffffff; margin-bottom: 8px; }',
-    '.report-sub { font-size: 14px; color: #8888a8; margin-bottom: 32px; }',
+    '.header-logo { font-size: 19px; font-weight: 800; color: #ffffff; letter-spacing: -0.2px; }',
+    '.header-sub { font-size: 12px; font-weight: 600; color: #a0a0b0; margin-top: 4px; }',
+    '.report-title { font-size: 26px; font-weight: 800; color: #ffffff; margin-bottom: 8px; }',
+    '.report-sub { font-size: 14px; font-weight: 600; color: #a0a0b0; margin-bottom: 32px; }',
     '.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }',
     '.summary-card { background: #14141e; border: 1px solid rgba(255,255,255,0.15); border-left: 5px solid #D63027; border-radius: 8px; padding: 16px 20px; }',
-    '.summary-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #8888a8; margin-bottom: 6px; }',
-    '.summary-value { font-size: 28px; font-weight: 700; color: #ffffff; }',
-    '.section-title { font-size: 16px; font-weight: 700; color: #ffffff; border-left: 4px solid #D63027; padding-left: 12px; margin-bottom: 18px; text-transform: uppercase; letter-spacing: 0.5px; }',
-    '.data-table { width: 100%; border-collapse: collapse; font-size: 11px; border: 1px solid rgba(255,255,255,0.15); }',
-    '.data-table th { background: #14141e; color: #ffffff; padding: 12px 10px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.15); }',
-    '.data-table td { padding: 12px 10px; border: 1px solid rgba(255,255,255,0.15); vertical-align: top; line-height: 1.6; color: #cccccc; }',
+    '.summary-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #a0a0b0; margin-bottom: 6px; }',
+    '.summary-value { font-size: 28px; font-weight: 800; color: #ffffff; }',
+    '.section-title { font-size: 16px; font-weight: 800; color: #ffffff; border-left: 4px solid #D63027; padding-left: 12px; margin-bottom: 18px; text-transform: uppercase; letter-spacing: 0.5px; }',
+    '.data-table { width: 100%; border-collapse: collapse; font-size: 12px; font-weight: 600; border: 1px solid rgba(255,255,255,0.15); }',
+    '.data-table th { background: #14141e; color: #ffffff; padding: 12px 10px; text-align: left; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.15); }',
+    '.data-table td { padding: 12px 10px; border: 1px solid rgba(255,255,255,0.15); vertical-align: top; line-height: 1.6; color: #ffffff; font-weight: 600; }',
     '.data-table tr:nth-child(even) td { background: rgba(255,255,255,0.03); }',
-    '.footer { margin-top: 60px; padding-top: 20px; border-top: 2px solid rgba(255,255,255,0.15); font-size: 11px; color: #8888a8; display: flex; align-items: center; justify-content: space-between; }',
-    '.footer-left { color: #D63027; font-weight: 600; font-size: 12px; }',
+    '.footer { margin-top: 60px; padding-top: 20px; border-top: 2px solid rgba(255,255,255,0.15); font-size: 12px; font-weight: 600; color: #a0a0b0; display: flex; align-items: center; justify-content: space-between; }',
+    '.footer-left { color: #D63027; font-weight: 800; font-size: 12px; }',
   ].join(' ')
 
   const total = visits.length
@@ -153,6 +153,7 @@ export async function GET(req) {
   const supabase = createServiceClient()
   const { searchParams } = new URL(req.url)
   const filter = searchParams.get('filter') || 'all'
+  const visitId = searchParams.get('visit_id')
 
   const [
     { data: allVisits },
@@ -170,12 +171,19 @@ export async function GET(req) {
   let visits = allVisits || []
   let title = 'All School Visits Report'
 
-  if (filter === 'pending') {
-    visits = visits.filter(v => !completionMap[v.id])
-    title = 'Pending Visits Report'
-  } else if (filter === 'completed') {
-    visits = visits.filter(v => completionMap[v.id])
-    title = 'Completed Visits Report'
+  // If a specific visit is requested, override everything else
+  if (visitId) {
+    visits = visits.filter(v => v.id === visitId)
+    const schoolName = visits[0]?.school_name || 'School'
+    title = `${schoolName} — Visit Report`
+  } else {
+    if (filter === 'pending') {
+      visits = visits.filter(v => !completionMap[v.id])
+      title = 'Pending Visits Report'
+    } else if (filter === 'completed') {
+      visits = visits.filter(v => completionMap[v.id])
+      title = 'Completed Visits Report'
+    }
   }
 
   const logoPath = path.join(process.cwd(), 'app', 'icon.png')

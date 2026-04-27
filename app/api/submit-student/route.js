@@ -1,25 +1,24 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-// Use the SERVICE ROLE KEY here, NOT the ANON KEY. 
-// This bypasses RLS so the server can safely insert the public form submission.
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // <-- Crucial change
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
 export async function POST(req) {
   try {
     const body = await req.json()
 
-    // Server-side validation: Ensure we actually got a visit_id
     if (!body.visit_id) {
       return NextResponse.json({ error: "Missing visit ID" }, { status: 400 })
     }
 
-    // Insert the student data securely
+    const isSchool = body.mode === 'school'
+    const table = isSchool ? 'visit_students' : 'outreach_students'
+
     const { error } = await supabase
-      .from('visit_students')
+      .from(table)
       .insert([{
         visit_id: body.visit_id,
         full_name: body.full_name,
@@ -27,7 +26,9 @@ export async function POST(req) {
         phone: body.phone || null,
         grade: body.grade || null,
         major_interested: body.major_interested || null,
-        certificate_type: body.certificate_type || null, 
+        certificate_type: body.certificate_type || null,
+        nationality: body.nationality || null,
+        residence_place: body.residence_place || null,
         is_matched: false
       }])
 

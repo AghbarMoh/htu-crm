@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase'
 import {
   LayoutDashboard, School, Users, ClipboardList, BookUser,
   CalendarCheck, MessageSquare, BarChart2, Settings, LogOut,
-  Archive, Activity, FileText, Sun, Wallet, ChevronDown, Bot
+  Activity, FileText, Sun, Wallet, ChevronDown, Bot
 } from 'lucide-react'
 
 const navItemsEvents = [
@@ -34,18 +34,18 @@ const navItemsAnalysis = [
 ]
 
 const navItemsAdminTop = [
-  { label: 'Staff Companions',      href: '/dashboard/companions',      icon: Users },
+  { label: 'Staff Companions Metrics',      href: '/dashboard/companions',      icon: Users },
 ]
 
 const navItemsAdminBottom = [
   { label: 'Activity Log',          href: '/dashboard/activity',        icon: Activity },
-  { label: 'Archive',               href: '/dashboard/archive',         icon: Archive },
   { label: 'Settings',              href: '/dashboard/settings',        icon: Settings },
 ]
 
 const applicantsSubItems = [
   { label: 'Pending Applicants',   href: '/dashboard/applicants/pending' },
   { label: 'Completed Applicants', href: '/dashboard/applicants/completed' },
+  { label: 'Previous Years',       href: '/dashboard/applicants/previous-years' },
 ]
 
 const sopSubItems = [
@@ -65,6 +65,7 @@ const btnReset = {
   marginBottom: '1px',
   cursor: 'pointer',
   fontSize: '13px',
+  fontWeight: '600',
   color: 'var(--text-secondary)',
   transition: 'all 0.15s ease',
   border: '1px solid transparent',
@@ -103,9 +104,8 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="logo-zone">
         <div className="logo-mark">
-          <Activity size={18} color="white" />
-        </div>
-        <div className="logo-name">HTU CRM</div>
+  <img src="/logo.png" alt="HTU" style={{ width: '100px', height: '100px', objectFit: 'contain' }} /></div>
+        <div className="logo-name">HTU SRO CRM</div>
         <div className="logo-sub">Students Recruitment & Outreach</div>
       </div>
 
@@ -114,7 +114,7 @@ export default function Sidebar() {
         {/* 1. Events */}
         <div className="nav-label">Recruitment & Events</div>
         {navItemsEvents.map(({ href, icon: Icon, label }) => (
-          <Link key={href} href={href} className={`nav-item ${isActive(href) ? 'active' : ''}`}>
+          <Link key={href} href={href} className={`nav-item ${isActive(href) ? 'active' : ''}`} style={{ fontWeight: 600 }}>
             <Icon className="nav-icon" />
             {label}
           </Link>
@@ -144,9 +144,9 @@ export default function Sidebar() {
             <span style={{ flex: 1 }}>Applicants</span>
             <ChevronDown size={12} style={{ transition: 'transform 0.2s ease', transform: applicantsOpen ? 'rotate(180deg)' : 'rotate(0deg)', opacity: 0.4, flexShrink: 0 }} />
           </button>
-          <div style={{ overflow: 'hidden', maxHeight: applicantsOpen ? '100px' : '0px', transition: 'max-height 0.22s ease' }}>
+          <div style={{ overflow: 'hidden', maxHeight: applicantsOpen ? '140px' : '0px', transition: 'max-height 0.22s ease' }}>
             {applicantsSubItems.map(({ href, label }) => (
-              <Link key={href} href={href} className={`nav-item ${pathname === href ? 'active' : ''}`} style={{ paddingLeft: '34px', fontSize: '12px' }}>
+              <Link key={href} href={href} className={`nav-item ${pathname === href ? 'active' : ''}`} style={{ paddingLeft: '34px', fontSize: '12px', fontWeight: 600 }}>
                 {label}
               </Link>
             ))}
@@ -192,12 +192,12 @@ export default function Sidebar() {
             }}
           >
             <FileText style={{ width: '15px', height: '15px', flexShrink: 0, opacity: isSopActive ? 1 : sopHover ? 0.85 : 0.6, transition: 'opacity 0.15s' }} />
-            <span style={{ flex: 1 }}>SOP & ISO</span>
+            <span style={{ flex: 1 }}>SOP</span>
             <ChevronDown size={12} style={{ transition: 'transform 0.2s ease', transform: sopOpen ? 'rotate(180deg)' : 'rotate(0deg)', opacity: 0.4, flexShrink: 0 }} />
           </button>
           <div style={{ overflow: 'hidden', maxHeight: sopOpen ? '100px' : '0px', transition: 'max-height 0.22s ease' }}>
             {sopSubItems.map(({ href, label }) => (
-              <Link key={href} href={href} className={`nav-item ${pathname === href ? 'active' : ''}`} style={{ paddingLeft: '34px', fontSize: '12px' }}>
+              <Link key={href} href={href} className={`nav-item ${pathname === href ? 'active' : ''}`} style={{ paddingLeft: '34px', fontSize: '12px', fontWeight: 600 }}>
                 {label}
               </Link>
             ))}

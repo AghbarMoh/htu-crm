@@ -64,13 +64,31 @@ export async function POST(req) {
         phone: payload.phone || null,
         email: payload.email || null,
         date_of_birth: payload.date_of_birth || null,
-        cause_of_visit: payload.cause_of_visit,
         feedback: payload.feedback || null,
       }])
       .select()
       .single()
     if (error) return Response.json({ error: error.message }, { status: 500 })
     return Response.json({ success: true, data })
+  }
+
+  if (action === 'delete_visitor') {
+    const { error } = await supabase
+      .from('open_day_visitors')
+      .delete()
+      .eq('id', payload.id)
+    if (error) return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ success: true })
+  }
+
+  if (action === 'update_visitor') {
+    const { id, ...rest } = payload
+    const { error } = await supabase
+      .from('open_day_visitors')
+      .update(rest)
+      .eq('id', id)
+    if (error) return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ success: true })
   }
 
   return Response.json({ error: 'Unknown action' }, { status: 400 })

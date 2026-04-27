@@ -116,7 +116,7 @@ export default function BudgetPage() {
 
       <div style={{ marginBottom: '28px' }}>
         <div style={{ fontSize: '18px', fontWeight: '600', color: '#e8e8f0' }}>Budget Request</div>
-        <div style={{ fontSize: '12px', color: '#55556a', marginTop: '3px' }}>Outreach trip cost planner · HTU CRM</div>
+        <div style={{ fontSize: '12px', color: '#55556a', marginTop: '3px' }}>Outreach trip cost planner · HTU SRO CRM</div>
       </div>
 
       {/* Trip Details */}

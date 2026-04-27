@@ -8,7 +8,7 @@ export async function GET() {
 
   const supabase = createServiceClient()
 
-  try {
+try {
     const [
       { data: profile },
       { data: applicants },
@@ -19,27 +19,28 @@ export async function GET() {
       { data: completedApplicants }
     ] = await Promise.all([
       supabase.from('profiles').select('full_name').eq('id', user.id).single(),
-      supabase.from('applicants').select('id, is_matched, is_archived, status'),
+      supabase.from('applicants').select('id, is_matched, status'),
       supabase.from('visit_completions').select('*'),
-      supabase.from('visit_students').select('id'),
+      supabase.from('visit_students').select('id, is_matched'),
       supabase.from('contacts').select('id'),
       supabase.from('school_visits').select('*').order('visit_date', { ascending: true }),
       supabase.from('completed_applicants').select('school_name')
     ])
+
     return NextResponse.json({
       profile: profile || null,
       stats: {
-        totalApplicants: applicants?.filter(a => !a.is_archived && !a.is_matched).length || 0, 
-        completedApplicants: applicants?.filter(a => a.is_archived || a.is_matched).length || 0, 
+        totalApplicants: applicants?.filter(a => !a.is_matched).length || 0,
+        completedApplicants: completedApplicants?.length || 0,
         totalVisits: completions?.length || 0,
         totalVisitStudents: students?.length || 0,
         totalContacts: contacts?.length || 0,
-        matchedApplicants: applicants?.filter(a => a.is_matched).length || 0,
+        matchedApplicants: students?.filter(s => s.is_matched).length || 0,
       },
       allVisits: visits || [],
       completions: completions || [],
       completedApplicantSchools: completedApplicants?.map(a => a.school_name).filter(Boolean) || []
-    });
+    })
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

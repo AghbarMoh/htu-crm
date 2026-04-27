@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useParams } from 'next/navigation' // <-- NEW: Official Next.js URL reader
+import { useParams, useSearchParams } from 'next/navigation'
 
 export default function StudentApplyPage() {
-  // <-- NEW: Safely grab the visit_id from the URL
-  const params = useParams() 
-  const visit_id = params?.visit_id 
+  const params = useParams()
+  const searchParams = useSearchParams()
+  const visit_id = params?.visit_id
+  const mode = searchParams.get('mode') || 'outreach'
+  const isSchoolMode = mode === 'school'
 
   const [form, setForm] = useState({
     full_name: '',
@@ -15,32 +17,41 @@ export default function StudentApplyPage() {
     grade: '',
     major_dropdown: '',
     major_custom: '',
-    certificate_type: ''
+    certificate_type: '',
+    certificate_custom: '',
+    nationality: '',
+    residence_place: ''
   })
-  
+
   const [status, setStatus] = useState('idle')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.full_name) return alert("Please enter your full name.")
-    if (!visit_id) return alert("Error: Missing Visit ID. Please scan the QR code again.") // <-- Safety check
-    
+    if (!visit_id) return alert("Error: Missing Visit ID. Please scan the QR code again.")
+
     setStatus('submitting')
 
     const finalMajor = form.major_dropdown === 'Other' ? form.major_custom : form.major_dropdown
+    const finalCertificate = isSchoolMode
+      ? form.certificate_type
+      : (form.certificate_type === 'Others' ? form.certificate_custom : form.certificate_type)
 
     try {
       const res = await fetch('/api/submit-student', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          visit_id: visit_id, // Safely passes the ID to the database
+        body: JSON.stringify({
+          mode: mode,
+          visit_id: visit_id,
           full_name: form.full_name,
           email: form.email,
           phone: form.phone,
           grade: form.grade,
           major_interested: finalMajor,
-          certificate_type: form.certificate_type
+          certificate_type: finalCertificate,
+          nationality: isSchoolMode ? null : form.nationality,
+          residence_place: isSchoolMode ? null : form.residence_place
         })
       })
 
@@ -109,22 +120,59 @@ export default function StudentApplyPage() {
             <option value="12th Grade">12th Grade</option>
           </select>
 
+          {/* Certificate Type — switches based on mode */}
           <label style={s.label}>Certificate Type</label>
-          <select style={s.input} value={form.certificate_type} onChange={e => setForm({...form, certificate_type: e.target.value})}>
-            <option value="">Select Certificate</option>
-            <option value="BTEC اكاديمي/ تكنولوجيا المعلومات">BTEC اكاديمي/ تكنولوجيا المعلومات</option>
-            <option value="BTEC اكاديمي/ مسار الانشاءات و البيئة المبنية">BTEC اكاديمي/ مسار الانشاءات و البيئة المبنية</option>
-            <option value="BTEC اكاديمي/ مسار هندسي">BTEC اكاديمي/ مسار هندسي</option>
-            <option value="حقل الصحي + مادة الرياضيات">حقل الصحي + مادة الرياضيات</option>
-            <option value="حقل العلوم و التكنولوجيا">حقل العلوم و التكنولوجيا</option>
-            <option value="حقل الهندسي">حقل الهندسي</option>
-            <option value="حقل مدمج ( الهندسي + العلوم و التكنولوجيا)">حقل مدمج ( الهندسي + العلوم و التكنولوجيا)</option>
-            <option value="توجيهي علمي">توجيهي علمي</option>
-            <option value="توجيهي صناعي">توجيهي صناعي</option>
-            <option value="IGCSE">IGCSE</option>
-            <option value="IB">IB</option>
-            <option value="SAT">SAT</option>
-          </select>
+          {isSchoolMode ? (
+            <select style={s.input} value={form.certificate_type} onChange={e => setForm({...form, certificate_type: e.target.value})}>
+              <option value="">Select Certificate</option>
+              <option value="BTEC اكاديمي/ تكنولوجيا المعلومات">BTEC اكاديمي/ تكنولوجيا المعلومات</option>
+              <option value="BTEC اكاديمي/ مسار الانشاءات و البيئة المبنية">BTEC اكاديمي/ مسار الانشاءات و البيئة المبنية</option>
+              <option value="BTEC اكاديمي/ مسار هندسي">BTEC اكاديمي/ مسار هندسي</option>
+              <option value="حقل الصحي + مادة الرياضيات">حقل الصحي + مادة الرياضيات</option>
+              <option value="حقل العلوم و التكنولوجيا">حقل العلوم و التكنولوجيا</option>
+              <option value="حقل الهندسي">حقل الهندسي</option>
+              <option value="حقل مدمج ( الهندسي + العلوم و التكنولوجيا)">حقل مدمج ( الهندسي + العلوم و التكنولوجيا)</option>
+              <option value="توجيهي علمي">توجيهي علمي</option>
+              <option value="توجيهي صناعي">توجيهي صناعي</option>
+              <option value="IGCSE">IGCSE</option>
+              <option value="IB">IB</option>
+              <option value="SAT">SAT</option>
+            </select>
+          ) : (
+            <>
+              <select style={{ ...s.input, marginBottom: form.certificate_type === 'Others' ? '10px' : '20px' }} value={form.certificate_type} onChange={e => setForm({...form, certificate_type: e.target.value})}>
+                <option value="">Select Certificate</option>
+                <option value="AP">AP</option>
+                <option value="IG">IG</option>
+                <option value="IB">IB</option>
+                <option value="SAT">SAT</option>
+                <option value="National">National</option>
+                <option value="Others">Others</option>
+              </select>
+
+              {form.certificate_type === 'Others' && (
+                <input
+                  style={s.input}
+                  type="text"
+                  placeholder="Please specify your certificate..."
+                  value={form.certificate_custom}
+                  onChange={e => setForm({...form, certificate_custom: e.target.value})}
+                  autoFocus
+                />
+              )}
+            </>
+          )}
+
+          {/* Only show for Outreach mode */}
+          {!isSchoolMode && (
+            <>
+              <label style={s.label}>Nationality</label>
+              <input style={s.input} type="text" placeholder="e.g. Jordanian" value={form.nationality} onChange={e => setForm({...form, nationality: e.target.value})} />
+
+              <label style={s.label}>Residence Place</label>
+              <input style={s.input} type="text" placeholder="e.g. Amman" value={form.residence_place} onChange={e => setForm({...form, residence_place: e.target.value})} />
+            </>
+          )}
 
           <label style={s.label}>Major Interested In</label>
           <select style={{ ...s.input, marginBottom: form.major_dropdown === 'Other' ? '10px' : '20px' }} value={form.major_dropdown} onChange={e => setForm({...form, major_dropdown: e.target.value})}>
@@ -142,12 +190,12 @@ export default function StudentApplyPage() {
           </select>
 
           {form.major_dropdown === 'Other' && (
-            <input 
-              style={s.input} 
-              type="text" 
-              placeholder="Please specify your major..." 
-              value={form.major_custom} 
-              onChange={e => setForm({...form, major_custom: e.target.value})} 
+            <input
+              style={s.input}
+              type="text"
+              placeholder="Please specify your major..."
+              value={form.major_custom}
+              onChange={e => setForm({...form, major_custom: e.target.value})}
               autoFocus
             />
           )}
@@ -155,7 +203,7 @@ export default function StudentApplyPage() {
           <button style={s.button} type="submit" disabled={status === 'submitting'}>
             {status === 'submitting' ? 'Submitting...' : 'Submit Details'}
           </button>
-          
+
           {status === 'error' && (
              <p style={{ color: '#ef4444', fontSize: '13px', textAlign: 'center', marginTop: '16px' }}>Something went wrong. Please try again.</p>
           )}

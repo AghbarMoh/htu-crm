@@ -7,9 +7,14 @@ export async function GET() {
   const { errorResponse } = await requireAuth()
   if (errorResponse) return errorResponse
   const supabase = createServiceClient()
-  const { data, error } = await supabase.from('companions').select('*').order('created_at', { ascending: false })
+
+  const { data: companions, error } = await supabase
+    .from('companions')
+    .select('*, companion_evaluations(*)')
+    .order('created_at', { ascending: false })
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+  return NextResponse.json({ data: companions })
 }
 
 export async function POST(req) {
@@ -38,6 +43,31 @@ export async function POST(req) {
     const { error } = await supabase.from('companions').delete().eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     await logActivity('Deleted companion', 'companion', name, 'Companion removed')
+    return NextResponse.json({ success: true })
+  }
+
+  if (action === 'evaluate') {
+    const { companion_id, companion_name, ...evaluation } = payload
+    const { data: existing } = await supabase
+      .from('companion_evaluations')
+      .select('id')
+      .eq('companion_id', companion_id)
+      .maybeSingle()
+
+    let result
+    if (existing) {
+      result = await supabase
+        .from('companion_evaluations')
+        .update({ ...evaluation, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+    } else {
+      result = await supabase
+        .from('companion_evaluations')
+        .insert([{ companion_id, ...evaluation }])
+    }
+
+    if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 })
+    await logActivity('Evaluated companion', 'companion', companion_name, 'Evaluation updated')
     return NextResponse.json({ success: true })
   }
 

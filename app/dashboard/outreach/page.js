@@ -58,7 +58,7 @@ function BudgetTab() {
     <div>
       <div style={{ marginBottom: '20px' }}>
         <div style={{ fontSize: '15px', fontWeight: '600', color: '#e8e8f0' }}>Budget Request</div>
-        <div style={{ fontSize: '12px', color: '#55556a', marginTop: '3px' }}>Outreach trip cost planner · HTU CRM</div>
+        <div style={{ fontSize: '12px', color: '#55556a', marginTop: '3px' }}>Outreach trip cost planner · HTU SRO CRM</div>
       </div>
       <div style={sec}>
         <div style={{ fontSize: '12px', color: '#7070a0', fontWeight: '600', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '16px' }}>Trip Details</div>
@@ -332,8 +332,7 @@ function OutreachVisitsTab() {
 
   const getRegistrationLink = (visitId) => {
     if (typeof window !== 'undefined') {
-      // Assuming your public application form is at /apply/[id]
-      return `${window.location.origin}/apply/${visitId}`
+      return `${window.location.origin}/apply/${visitId}?mode=outreach`
     }
     return ''
   }
@@ -525,8 +524,8 @@ function OutreachVisitsTab() {
               <div><label style={s.label}>Date To *</label><input type='date' value={form.date_to} onChange={e => setForm({ ...form, date_to: e.target.value })} style={s.input} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div><label style={s.label}>Time From</label><input type='time' value={form.time_from} onChange={e => setForm({ ...form, time_from: e.target.value })} style={s.input} /></div>
-              <div><label style={s.label}>Time To</label><input type='time' value={form.time_to} onChange={e => setForm({ ...form, time_to: e.target.value })} style={s.input} /></div>
+              <div><label style={s.label}>Time From</label><input type='time' value={form.time_from} onChange={e => setForm({ ...form, time_from: e.target.value })} style={{ ...s.input, appearance: 'auto' }} /></div>
+              <div><label style={s.label}>Time To</label><input type='time' value={form.time_to} onChange={e => setForm({ ...form, time_to: e.target.value })} style={{ ...s.input, appearance: 'auto' }} /></div>
             </div>
             <div><label style={s.label}>Companion</label><input type="text" value={form.companion} onChange={e => setForm({ ...form, companion: e.target.value })} placeholder='e.g. Aghbar' style={s.input} /></div>
             <div><label style={s.label}>Status (New/Repeated)</label><select value={form.connection_status} onChange={e => setForm({ ...form, connection_status: e.target.value })} style={s.input}><option value="New" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>New</option><option value="Repeated" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>Repeated</option></select></div>
