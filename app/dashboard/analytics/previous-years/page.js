@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import React, { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Users, GraduationCap, Activity, AlertCircle, ChevronDown } from 'lucide-react'
 import {
@@ -158,6 +158,575 @@ function GradeTooltip({ active, payload, label }) {
           {p.name}: {p.value} students
         </p>
       ))}
+    </div>
+  )
+}
+function NationalitySpectrum({ data: natData, total }) {
+  const [hovered, setHovered] = useState(null)
+  const top     = natData.slice(0, 10)
+  const max     = top[0]?.count || 1
+  const colors  = [C.blue, C.purple, C.cyan, C.green, C.amber, C.orange, C.pink, '#a78bfa', '#34d399', '#60a5fa']
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {/* Bars */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '120px', padding: '0 4px' }}>
+        {top.map((n, i) => {
+          const pct    = n.count / max
+          const color  = colors[i]
+          const isHov  = hovered === n.name
+          const barH   = Math.max(8, Math.round(pct * 110))
+          return (
+            <div
+              key={n.name}
+              onMouseEnter={() => setHovered(n.name)}
+              onMouseLeave={() => setHovered(null)}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', cursor: 'default' }}
+            >
+              {/* Count label on hover */}
+              <div style={{ marginBottom: '4px', opacity: isHov ? 1 : 0, transition: 'opacity 0.2s' }}>
+                <span style={{ fontSize: '10px', fontWeight: '700', color, whiteSpace: 'nowrap' }}>
+                  {n.count.toLocaleString()}
+                </span>
+              </div>
+              {/* Bar */}
+              <div style={{
+                width: '100%', height: `${barH}px`,
+                background: isHov ? color : `${color}70`,
+                borderRadius: '4px 4px 2px 2px',
+                boxShadow: isHov ? `0 0 12px ${color}80, 0 0 24px ${color}30` : 'none',
+                transition: 'all 0.2s',
+                position: 'relative', overflow: 'hidden',
+              }}>
+                {/* Shimmer line */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `${color}`, opacity: 0.8, borderRadius: '4px' }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {/* X axis labels */}
+      <div style={{ display: 'flex', gap: '6px', padding: '0 4px' }}>
+        {top.map((n, i) => {
+          const color = colors[i]
+          const isHov = hovered === n.name
+          const pct   = total ? Math.round(n.count / total * 100) : 0
+          return (
+            <div
+              key={n.name}
+              onMouseEnter={() => setHovered(n.name)}
+              onMouseLeave={() => setHovered(null)}
+              style={{ flex: 1, textAlign: 'center', cursor: 'default' }}
+            >
+              <div style={{
+                width: '6px', height: '6px', borderRadius: '50%',
+                background: color, margin: '0 auto 4px auto',
+                boxShadow: isHov ? `0 0 6px ${color}` : 'none',
+                transition: 'box-shadow 0.2s',
+              }} />
+              <p style={{
+                fontSize: '9px', margin: 0, fontWeight: isHov ? '700' : '400',
+                color: isHov ? '#fff' : 'rgba(255,255,255,0.3)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                transition: 'color 0.2s',
+              }} title={n.name}>
+                {n.name?.trim().slice(0, 6)}
+              </p>
+              <p style={{ fontSize: '9px', margin: '2px 0 0 0', fontWeight: '700', color: isHov ? color : 'rgba(255,255,255,0.2)', transition: 'color 0.2s' }}>
+                {pct}%
+              </p>
+            </div>
+          )
+        })}
+      </div>
+      {/* Hovered detail */}
+      <div style={{
+        padding: '10px 14px', borderRadius: '10px',
+        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+        minHeight: '40px', transition: 'all 0.2s',
+      }}>
+        {hovered ? (() => {
+          const n     = top.find(x => x.name === hovered)
+          const color = colors[top.indexOf(n)]
+          const pct   = total ? Math.round(n.count / total * 100) : 0
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#fff' }}>{n.name?.trim()}</span>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>{n.count.toLocaleString()} applicants</span>
+                <span style={{ fontSize: '16px', fontWeight: '800', color, letterSpacing: '-0.5px' }}>{pct}%</span>
+              </div>
+            </div>
+          )
+        })() : (
+          <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', margin: 0, textAlign: 'center' }}>Hover a bar to explore</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function FatePipeline({ statusData, total }) {
+  const [hovered, setHovered] = useState(null)
+  const getColor = (name) => {
+    const n = name?.toLowerCase() || ''
+    if (n.includes('accept'))  return C.green
+    if (n.includes('reject'))  return C.red
+    if (n.includes('fail'))    return C.orange
+    if (n.includes('abstain')) return C.amber
+    return C.purple
+  }
+  const getIcon = (name) => {
+    const n = name?.toLowerCase() || ''
+    if (n.includes('accept'))  return '✓'
+    if (n.includes('reject'))  return '✗'
+    if (n.includes('fail'))    return '✕'
+    if (n.includes('abstain')) return '⏸'
+    return '·'
+  }
+  const sorted = [...(statusData || [])].sort((a, b) => b.count - a.count)
+  let remaining = total
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
+      {sorted.map((s, i) => {
+        const color   = getColor(s.name)
+        const icon    = getIcon(s.name)
+        const pct     = total ? Math.round(s.count / total * 100) : 0
+        const pipePct = remaining ? Math.round(s.count / remaining * 100) : 0
+        const isHov   = hovered === s.name
+        const prevRem = remaining
+        remaining    -= s.count
+        if (remaining < 0) remaining = 0
+        return (
+          <div key={s.name}
+            onMouseEnter={() => setHovered(s.name)}
+            onMouseLeave={() => setHovered(null)}
+            style={{ display: 'flex', gap: '0px', alignItems: 'stretch', cursor: 'default' }}
+          >
+            {/* Left pipe column */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '28px', flexShrink: 0 }}>
+              {/* Pipe in from above */}
+              <div style={{
+                width: '4px', height: '14px', flexShrink: 0,
+                background: i === 0 ? 'rgba(255,255,255,0.15)' : sorted[i-1] ? getColor(sorted[i-1].name) + '60' : 'rgba(255,255,255,0.1)',
+              }} />
+              {/* Node dot */}
+              <div style={{
+                width: '14px', height: '14px', borderRadius: '50%', flexShrink: 0,
+                background: isHov ? color : `${color}40`,
+                border: `2px solid ${color}`,
+                boxShadow: isHov ? `0 0 10px ${color}` : 'none',
+                transition: 'all 0.2s', zIndex: 1,
+              }} />
+              {/* Pipe out below */}
+              {i < sorted.length - 1 && (
+                <div style={{
+                  width: '4px', flex: 1, minHeight: '24px',
+                  background: `${color}60`,
+                }} />
+              )}
+            </div>
+
+            {/* Right content */}
+            <div style={{
+              flex: 1, marginLeft: '10px', marginBottom: i < sorted.length - 1 ? '0px' : '0',
+              padding: '6px 12px',
+              background: isHov ? `${color}08` : 'transparent',
+              borderRadius: '10px',
+              border: `1px solid ${isHov ? color + '25' : 'transparent'}`,
+              transition: 'all 0.2s',
+              marginTop: '4px', marginBottom: '4px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                  <span style={{
+                    fontSize: '11px', fontWeight: '800', color,
+                    width: '16px', height: '16px', borderRadius: '4px',
+                    background: `${color}15`, border: `1px solid ${color}30`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>{icon}</span>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: isHov ? '#fff' : 'rgba(255,255,255,0.7)' }}>
+                    {s.name}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)' }}>
+                    {s.count.toLocaleString()}
+                  </span>
+                  <span style={{
+                    fontSize: '14px', fontWeight: '800', color,
+                    letterSpacing: '-0.5px',
+                    filter: isHov ? `drop-shadow(0 0 6px ${color})` : 'none',
+                    transition: 'filter 0.2s',
+                  }}>
+                    {pct}%
+                  </span>
+                </div>
+              </div>
+              {/* Flow bar showing what % of remaining this drains */}
+              <div style={{ height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', width: `${pct}%`,
+                  background: `linear-gradient(90deg, ${color}, ${color}80)`,
+                  borderRadius: '2px',
+                  boxShadow: isHov ? `0 0 6px ${color}` : 'none',
+                  transition: 'width 0.8s ease, box-shadow 0.2s',
+                }} />
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function SchoolTypeBattery({ data: d }) {
+  const total   = d.reduce((s, x) => s + x.count, 0)
+  const private_ = d.find(x => x.name?.toLowerCase().includes('private'))
+  const govt_    = d.find(x => x.name?.toLowerCase().includes('govern') || x.name?.toLowerCase().includes('public'))
+  const other_   = d.find(x => x !== private_ && x !== govt_)
+  const segments = [
+    private_ && { label: 'Private',      count: private_.count, color: C.purple },
+    govt_    && { label: 'Governmental',  count: govt_.count,    color: C.cyan   },
+    other_   && { label: other_.name,     count: other_.count,   color: 'rgba(255,255,255,0.3)' },
+  ].filter(Boolean)
+  let cumulative = 0
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* Battery body */}
+      <div style={{ position: 'relative', margin: '0 auto' }}>
+        {/* Battery tip */}
+        <div style={{ width: '24px', height: '8px', background: 'rgba(255,255,255,0.15)', borderRadius: '3px 3px 0 0', margin: '0 auto' }} />
+        {/* Battery shell */}
+        <div style={{ width: '140px', height: '200px', border: '2px solid rgba(255,255,255,0.15)', borderRadius: '8px', overflow: 'hidden', position: 'relative', background: 'rgba(255,255,255,0.03)' }}>
+          {/* Fill segments from bottom */}
+          {[...segments].reverse().map((seg, ri) => {
+            const i   = segments.length - 1 - ri
+            const pct = total ? (seg.count / total) * 100 : 0
+            const bot = cumulative
+            cumulative += pct
+            return (
+              <div key={seg.label} style={{
+                position: 'absolute', bottom: `${bot}%`, left: 0, right: 0,
+                height: `${pct}%`,
+                background: `linear-gradient(180deg, ${seg.color}99, ${seg.color}dd)`,
+                borderTop: ri < segments.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                transition: 'height 1s ease',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
+              }}>
+                {pct > 12 && (
+                  <>
+                    <span style={{ fontSize: '22px', fontWeight: '800', color: '#fff', letterSpacing: '-0.5px', lineHeight: 1, filter: `drop-shadow(0 0 8px ${seg.color})` }}>
+                      {Math.round(pct)}%
+                    </span>
+                    <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', marginTop: '2px', fontWeight: '600' }}>
+                      {seg.label}
+                    </span>
+                  </>
+                )}
+              </div>
+            )
+          })}
+          {/* Horizontal charge lines */}
+          {[25, 50, 75].map(p => (
+            <div key={p} style={{ position: 'absolute', bottom: `${p}%`, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.06)', zIndex: 2 }} />
+          ))}
+        </div>
+      </div>
+      {/* Legend */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {segments.map(seg => {
+          const pct = total ? Math.round(seg.count / total * 100) : 0
+          return (
+            <div key={seg.label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: seg.color, flexShrink: 0 }} />
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', flex: 1 }}>{seg.label}</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: seg.color }}>{pct}%</span>
+              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>{seg.count.toLocaleString()}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function FeederSchoolHeatList({ schools }) {
+  const [hovered, setHovered] = useState(null)
+  const max     = schools[0]?.count || 1
+  const getMedalColor = (i) => i === 0 ? C.amber : i === 1 ? '#94a3b8' : i === 2 ? '#cd7c3a' : null
+  const SEGMENTS = 8
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '260px', overflowY: 'auto', paddingRight: '4px' }}>
+      {schools.map((s, i) => {
+        const pct      = s.count / max
+        const filled   = Math.max(1, Math.round(pct * SEGMENTS))
+        const mColor   = getMedalColor(i)
+        const barColor = mColor || C.blue
+        const isHov    = hovered === s.name
+        return (
+          <div
+            key={s.name}
+            onMouseEnter={() => setHovered(s.name)}
+            onMouseLeave={() => setHovered(null)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '7px 10px', borderRadius: '10px',
+              background: isHov ? 'rgba(255,255,255,0.04)' : 'transparent',
+              border: `1px solid ${isHov ? barColor + '30' : 'transparent'}`,
+              transition: 'all 0.15s', cursor: 'default',
+            }}
+          >
+            {/* Rank badge */}
+            <div style={{
+              width: '24px', height: '24px', borderRadius: '6px', flexShrink: 0,
+              background: mColor ? `${mColor}20` : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${mColor ? mColor + '35' : 'rgba(255,255,255,0.08)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{ fontSize: i < 3 ? '13px' : '10px', fontWeight: '800', color: mColor || 'rgba(255,255,255,0.3)', lineHeight: 1 }}>
+                {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+              </span>
+            </div>
+
+            {/* School name */}
+            <span style={{
+              fontSize: '12px', flex: 1, minWidth: 0,
+              fontWeight: i < 3 ? '600' : '400',
+              color: i < 3 ? '#fff' : 'rgba(255,255,255,0.55)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }} title={s.name}>
+              {s.name?.length > 26 ? s.name.slice(0, 26) + '…' : s.name}
+            </span>
+
+            {/* Signal segments */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', flexShrink: 0, height: '18px' }}>
+              {Array.from({ length: SEGMENTS }).map((_, si) => {
+                const active = si < filled
+                const segH   = 6 + (si / (SEGMENTS - 1)) * 12
+                return (
+                  <div key={si} style={{
+                    width: '5px',
+                    height: `${segH}px`,
+                    borderRadius: '2px',
+                    background: active ? barColor : 'rgba(255,255,255,0.08)',
+                    boxShadow: active && isHov ? `0 0 6px ${barColor}` : 'none',
+                    opacity: active ? (0.5 + (si / SEGMENTS) * 0.5) : 1,
+                    transition: 'all 0.2s',
+                  }} />
+                )
+              })}
+            </div>
+
+            {/* Count */}
+            <span style={{
+              fontSize: '11px', fontWeight: '700', flexShrink: 0, minWidth: '36px', textAlign: 'right',
+              color: isHov ? barColor : mColor || 'rgba(255,255,255,0.3)',
+              transition: 'color 0.2s',
+            }}>
+              {s.count.toLocaleString()}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function RegionPulseChart({ govData, total }) {
+  const [hoveredRing, setHoveredRing] = useState(null)
+  const rings      = govData.slice(0, 8)
+  const maxCount   = rings[0]?.count || 1
+  const ringColors = [C.blue, C.purple, C.cyan, C.green, C.amber, C.orange, C.pink, 'rgba(255,255,255,0.4)']
+  const cx = 120, cy = 120
+  const minR = 18, maxR = 108
+  return (
+    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+      <div style={{ flexShrink: 0, position: 'relative', width: '240px', height: '240px' }}>
+        <svg width="240" height="240">
+          {rings.map((g, i) => {
+            const pct    = g.count / maxCount
+            const radius = minR + pct * (maxR - minR)
+            const color  = ringColors[i]
+            const isHov  = hoveredRing === g.name
+            const circ   = 2 * Math.PI * radius
+            const filled = pct * circ
+            return (
+              <g key={g.name}
+                onMouseEnter={() => setHoveredRing(g.name)}
+                onMouseLeave={() => setHoveredRing(null)}
+                style={{ cursor: 'default' }}
+              >
+                <circle cx={cx} cy={cy} r={radius}
+                  fill="none" stroke={color} strokeWidth={isHov ? 3.5 : 2}
+                  opacity={hoveredRing && !isHov ? 0.12 : isHov ? 1 : 0.25}
+                  style={{ transition: 'all 0.2s' }} />
+                <circle cx={cx} cy={cy} r={radius}
+                  fill="none" stroke={color} strokeWidth={isHov ? 5 : 3}
+                  strokeDasharray={`${filled} ${circ - filled}`}
+                  strokeLinecap="round"
+                  transform={`rotate(-90 ${cx} ${cy})`}
+                  opacity={hoveredRing && !isHov ? 0.15 : 1}
+                  style={{
+                    filter: isHov ? `drop-shadow(0 0 6px ${color})` : 'none',
+                    transition: 'all 0.2s'
+                  }} />
+                {isHov && (
+                  <circle
+                    cx={cx + radius * Math.cos((filled / circ * 360 - 90) * Math.PI / 180)}
+                    cy={cy + radius * Math.sin((filled / circ * 360 - 90) * Math.PI / 180)}
+                    r={4} fill={color}
+                    style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+                  />
+                )}
+              </g>
+            )
+          })}
+          <text x={cx} y={cy - 8} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.3)" fontFamily="inherit">
+            {hoveredRing ? rings.find(r => r.name === hoveredRing)?.count.toLocaleString() : rings[0]?.count.toLocaleString()}
+          </text>
+          <text x={cx} y={cy + 8} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.2)" fontFamily="inherit" letterSpacing="0.5">
+            {hoveredRing ? hoveredRing.slice(0, 12) : (rings[0]?.name || '').slice(0, 12)}
+          </text>
+        </svg>
+      </div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
+        {rings.map((g, i) => {
+          const color = ringColors[i]
+          const pct   = total ? Math.round(g.count / total * 100) : 0
+          const isHov = hoveredRing === g.name
+          return (
+            <div key={g.name}
+              onMouseEnter={() => setHoveredRing(g.name)}
+              onMouseLeave={() => setHoveredRing(null)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px', cursor: 'default',
+                opacity: hoveredRing && !isHov ? 0.3 : 1,
+                transition: 'opacity 0.2s'
+              }}
+            >
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0, boxShadow: isHov ? `0 0 6px ${color}` : 'none', transition: 'box-shadow 0.2s' }} />
+              <span style={{ fontSize: '11px', color: i < 3 ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)', flex: 1, fontWeight: i < 3 ? '600' : '400' }}>
+                {g.name.length > 16 ? g.name.slice(0, 16) + '…' : g.name}
+              </span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color }}>{pct}%</span>
+              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', minWidth: '36px', textAlign: 'right' }}>{g.count.toLocaleString()}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function MajorDNAChart({ dna }) {
+  const [hoveredMajor, setHoveredMajor] = useState(null)
+  const traits = [
+    { key: 'genderRatio',  label: '♂ %',     color: C.blue,   desc: 'Male ratio',        max: 100 },
+    { key: 'avgTawjihi',   label: 'Tawjihi',  color: C.amber,  desc: 'Avg Tawjihi score', max: 100, min: 60 },
+    { key: 'privateRatio', label: 'Private',  color: C.purple, desc: 'Private school %',  max: 100 },
+    { key: 'topGovPct',    label: 'Top Gov',  color: C.cyan,   desc: 'Top governorate %', max: 100 },
+  ]
+  return (
+    <div>
+      {/* Trait legend */}
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
+        {traits.map(t => (
+          <div key={t.key} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: t.color }} />
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}>{t.desc}</span>
+          </div>
+        ))}
+      </div>
+      {/* DNA grid */}
+      <div style={{ overflowX: 'auto', paddingBottom: '4px' }}>
+        <div style={{ display: 'flex', gap: '6px', minWidth: `${dna.length * 52}px`, alignItems: 'flex-end' }}>
+          {dna.map((major, mi) => {
+            const isHovered = hoveredMajor === major.major
+            return (
+              <div
+                key={major.major}
+                onMouseEnter={() => setHoveredMajor(major.major)}
+                onMouseLeave={() => setHoveredMajor(null)}
+                style={{
+                  flex: 1, minWidth: '44px', cursor: 'default',
+                  opacity: hoveredMajor && !isHovered ? 0.3 : 1,
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                {/* Strand bars */}
+                <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', height: '160px', marginBottom: '8px', justifyContent: 'center' }}>
+                  {traits.map((t) => {
+                    const rawVal = major[t.key]
+                    const minVal = t.min || 0
+                    const pct    = Math.min(100, Math.max(0, ((rawVal - minVal) / (t.max - minVal)) * 100))
+                    const barH   = Math.max(4, Math.round(pct * 1.5))
+                    return (
+                      <div key={t.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                        <div style={{
+                          width: '6px', height: `${barH}px`,
+                          background: isHovered ? t.color : `${t.color}88`,
+                          borderRadius: '3px 3px 2px 2px',
+                          transition: 'height 0.6s ease, background 0.2s',
+                          boxShadow: isHovered ? `0 0 8px ${t.color}80` : 'none',
+                        }} />
+                      </div>
+                    )
+                  })}
+                </div>
+                {/* Major label */}
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{
+                    fontSize: '9px', fontWeight: isHovered ? '700' : '500',
+                    color: isHovered ? '#fff' : 'rgba(255,255,255,0.35)',
+                    margin: 0, lineHeight: '1.3',
+                    writingMode: 'vertical-rl', textOrientation: 'mixed',
+                    transform: 'rotate(180deg)', height: '60px',
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    transition: 'color 0.2s'
+                  }}>
+                    {major.major.length > 18 ? major.major.slice(0, 18) + '…' : major.major}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      {/* Hover detail panel */}
+      {(() => {
+        const m = dna.find(d => d.major === hoveredMajor)
+        return (
+          <div style={{
+            marginTop: '12px', padding: '12px 16px',
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '12px', display: 'flex', gap: '20px', flexWrap: 'wrap',
+            minHeight: '64px',
+            opacity: m ? 1 : 0,
+            transition: 'opacity 0.15s ease',
+          }}>
+            {m && (
+              <>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '13px', fontWeight: '700', color: '#fff', margin: '0 0 8px 0' }}>{m.major}</p>
+                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>{m.total.toLocaleString()} enrolled students</p>
+                </div>
+                {traits.map(t => (
+                  <div key={t.key} style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '16px', fontWeight: '800', color: t.color, margin: '0 0 2px 0', letterSpacing: '-0.5px' }}>
+                      {t.key === 'avgTawjihi' ? m[t.key] : `${m[t.key]}%`}
+                    </p>
+                    <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t.desc}</p>
+                    {t.key === 'topGovPct' && <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.2)', margin: '2px 0 0 0' }}>{m.topGov}</p>}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -450,28 +1019,76 @@ const flatTreemap = Object.values(
           {/* ══ ROW 4 — Major × Gender stacked bar + Tawjihi grade distribution ══ */}
           <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '12px', marginBottom: '14px' }}>
 
-            {/* Major × Gender stacked bar */}
+          {/* ── Enrollment Funnel by Major ── */}
             <Card>
-              <CardTitle sub="male (blue) vs female (pink) per major">Applicants by Major & Gender</CardTitle>
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={data.majorGenderData} layout="vertical" margin={{ left: 8, right: 36, top: 0, bottom: 0 }}>
-                  <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="major" width={190}
-                    tick={({ x, y, payload }) => (
-                      <text x={x} y={y} dy={4} textAnchor="end" fontSize={11} fill="rgba(255,255,255,0.5)" fontFamily="inherit">
-                        {payload.value?.length > 22 ? payload.value.slice(0, 22) + '…' : payload.value}
-                      </text>
-                    )}
-                    axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, n) => [`${v.toLocaleString()} students`, n]} />
-                  <Bar dataKey="Male"   stackId="s" fill={C.blue} radius={[0, 0, 0, 0]} maxBarSize={20} />
-                  <Bar dataKey="Female" stackId="s" fill={C.pink} radius={[0, 4, 4, 0]} maxBarSize={20}
-                    label={{ position: 'right', formatter: (v, _, index) => {
-                      const row = data.majorGenderData[index]
-                      return row ? (row.total || 0).toLocaleString() : ''
-                    }, fill: 'rgba(255,255,255,0.25)', fontSize: 10 }} />
-                </BarChart>
-              </ResponsiveContainer>
+              <CardTitle sub="total applicants → accepted → enrolled (has student ID) · sorted by volume">
+                Enrollment Funnel by Major
+              </CardTitle>
+              <div style={{ overflowY: 'auto', maxHeight: '340px', paddingRight: '4px' }}>
+                {(data.enrollmentFunnel || []).map((m, i) => {
+                  const enrollColor = m.enrollRate >= 60 ? C.green : m.enrollRate >= 35 ? C.amber : C.red
+                  return (
+                    <div key={m.major} style={{ marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '5px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#fff', maxWidth: '55%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={m.major}>
+                          {m.major.length > 28 ? m.major.slice(0, 28) + '…' : m.major}
+                        </span>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>{m.total.toLocaleString()} applicants</span>
+                          <span style={{ fontSize: '11px', fontWeight: '700', color: enrollColor, background: `${enrollColor}15`, border: `1px solid ${enrollColor}25`, borderRadius: '20px', padding: '1px 8px' }}>
+                            {m.enrollRate}% enrolled
+                          </span>
+                        </div>
+                      </div>
+                      {/* Three-layer bar */}
+                      <div style={{ position: 'relative', height: '22px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', overflow: 'hidden' }}>
+                        {/* Total (background) */}
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.06)', borderRadius: '6px' }} />
+                        {/* Accepted */}
+                        <div style={{
+                          position: 'absolute', left: 0, top: 0, bottom: 0,
+                          width: `${m.acceptRate}%`,
+                          background: `linear-gradient(90deg, ${C.blue}cc, ${C.cyan}99)`,
+                          borderRadius: '6px', transition: 'width 1s ease'
+                        }} />
+                        {/* Enrolled */}
+                        <div style={{
+                          position: 'absolute', left: 0, top: 0, bottom: 0,
+                          width: `${m.enrollRate}%`,
+                          background: `linear-gradient(90deg, ${enrollColor}, ${enrollColor}cc)`,
+                          borderRadius: '6px', transition: 'width 1.2s ease',
+                          boxShadow: `0 0 8px ${enrollColor}60`
+                        }} />
+                        {/* Labels inside bar */}
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', paddingLeft: '8px', gap: '6px' }}>
+                          <span style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.2px' }}>
+                            {m.accepted} accepted
+                          </span>
+                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>·</span>
+                          <span style={{ fontSize: '10px', fontWeight: '700', color: enrollColor }}>
+                            {m.enrolled} enrolled
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              {/* Legend */}
+              <div style={{ display: 'flex', gap: '16px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                {[
+                  { color: 'rgba(255,255,255,0.15)', label: 'Total Applicants' },
+                  { color: C.blue,  label: 'Accepted' },
+                  { color: C.green, label: 'Enrolled (≥60%)' },
+                  { color: C.amber, label: 'Enrolled (35–60%)' },
+                  { color: C.red,   label: 'Enrolled (<35%)' },
+                ].map(l => (
+                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: l.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>{l.label}</span>
+                  </div>
+                ))}
+              </div>
             </Card>
 
             {/* Tawjihi grade distribution */}
@@ -507,39 +1124,72 @@ const vals = (data?.gradeDistribution || []).reduce((s, d) => ({ sum: s.sum + d.
           {/* ══ ROW 5 — Top Avg Tawjihi by Major + Governorate ══ */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
 
-            {/* Avg Tawjihi by Major */}
+            {/* Grade Leaders by Major — Podium Score Cards */}
             <Card>
-              <CardTitle sub="average tawjihi score per major (top 12)">Grade Leaders by Major</CardTitle>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={data.majorAvgData} layout="vertical" margin={{ left: 8, right: 48, top: 0, bottom: 0 }}>
-                  <XAxis type="number" domain={[70, 100]} hide />
-                  <YAxis type="category" dataKey="major" width={185}
-                    tick={({ x, y, payload }) => (
-                      <text x={x} y={y} dy={4} textAnchor="end" fontSize={11} fill="rgba(255,255,255,0.5)" fontFamily="inherit">
-                        {payload.value?.length > 22 ? payload.value.slice(0, 22) + '…' : payload.value}
-                      </text>
-                    )}
-                    axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v} avg · based on ${data.majorAvgData?.find(m => m.avg === v)?.count || ''} students`]} />
-                  <Bar dataKey="avg" radius={[0, 6, 6, 0]} maxBarSize={18}
-                    label={{ position: 'right', fill: 'rgba(255,255,255,0.35)', fontSize: 10, formatter: v => v }}>
-                    {data.majorAvgData?.map((entry, i) => (
-                      <Cell key={i} fill={entry.avg >= 90 ? C.green : entry.avg >= 85 ? C.blue : entry.avg >= 80 ? C.amber : C.orange} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <CardTitle sub="average tawjihi score per major · arc = position in 70–100 range">Grade Leaders by Major</CardTitle>
+              <div style={{ overflowY: 'auto', maxHeight: '300px', paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {(data.majorAvgData || []).map((entry, i) => {
+                  const score     = entry.avg
+                  const color     = score >= 90 ? C.green : score >= 85 ? C.blue : score >= 80 ? C.amber : C.orange
+                  const medal     = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
+                  const arcPct    = Math.min(100, Math.max(0, ((score - 70) / 30) * 100))
+                  const r         = 18
+                  const circ      = 2 * Math.PI * r
+                  const dash      = (arcPct / 100) * circ * 0.75
+                  const gap       = circ - dash
+                  const rotation  = -225
+                  return (
+                    <div key={entry.major} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '10px 14px', borderRadius: '12px',
+                      background: i < 3 ? `${color}08` : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${i < 3 ? `${color}20` : 'rgba(255,255,255,0.05)'}`,
+                      transition: 'all 0.2s',
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.background = `${color}12`; e.currentTarget.style.borderColor = `${color}35` }}
+                      onMouseLeave={e => { e.currentTarget.style.background = i < 3 ? `${color}08` : 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = i < 3 ? `${color}20` : 'rgba(255,255,255,0.05)' }}
+                    >
+                      {/* Arc gauge */}
+                      <div style={{ position: 'relative', flexShrink: 0, width: '44px', height: '44px' }}>
+                        <svg width="44" height="44" style={{ transform: `rotate(${rotation}deg)` }}>
+                          <circle cx="22" cy="22" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3.5"
+                            strokeDasharray={`${circ * 0.75} ${circ}`} strokeLinecap="round" />
+                          <circle cx="22" cy="22" r={r} fill="none" stroke={color} strokeWidth="3.5"
+                            strokeDasharray={`${dash} ${gap + circ * 0.25}`} strokeLinecap="round"
+                            style={{ filter: `drop-shadow(0 0 4px ${color}80)`, transition: 'stroke-dasharray 0.8s ease' }} />
+                        </svg>
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: medal ? '14px' : '9px', lineHeight: 1 }}>
+                            {medal || <span style={{ fontWeight: '700', color: 'rgba(255,255,255,0.3)', fontSize: '10px' }}>#{i + 1}</span>}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Major name */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '12px', fontWeight: i < 3 ? '700' : '500', color: i < 3 ? '#fff' : 'rgba(255,255,255,0.6)', margin: '0 0 2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={entry.major}>
+                          {entry.major.length > 26 ? entry.major.slice(0, 26) + '…' : entry.major}
+                        </p>
+                        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', margin: 0 }}>
+                          {entry.count} students sampled
+                        </p>
+                      </div>
+                      {/* Score */}
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <p style={{ fontSize: '22px', fontWeight: '800', color, margin: 0, letterSpacing: '-0.5px', lineHeight: 1, filter: i < 3 ? `drop-shadow(0 0 8px ${color}60)` : 'none' }}>
+                          {score}
+                        </p>
+                        <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)', margin: '2px 0 0 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>avg score</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </Card>
 
-            {/* Governorate */}
+            {/* Applicants by Region — Concentric Ring Pulse */}
             <Card>
-              <CardTitle sub="certificate governorate of origin">Applicants by Region</CardTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
-                {govData.map((g, i) => (
-                  <PctRow key={g.name} label={g.name} count={g.count} total={data.total}
-                    color={i === 0 ? C.blue : i < 3 ? C.purple : 'rgba(255,255,255,0.35)'} bold={i < 3} />
-                ))}
-              </div>
+              <CardTitle sub="each ring = one region · size proportional to applicant share">Applicants by Region</CardTitle>
+              <RegionPulseChart govData={govData} total={data.total} />
             </Card>
           </div>
 
@@ -548,33 +1198,14 @@ const vals = (data?.gradeDistribution || []).reduce((s, d) => ({ sum: s.sum + d.
 
             {/* School Type */}
             <Card>
-              <CardTitle sub="private vs governmental">School Type</CardTitle>
-              <DonutChart data={donutSchool} size={160} />
+              <CardTitle sub="private vs governmental · fill = share">School Type</CardTitle>
+              <SchoolTypeBattery data={donutSchool} />
             </Card>
 
             {/* Top Schools */}
             <Card>
-              <CardTitle sub="top 15 schools by applicant count">Top Feeder Schools</CardTitle>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={data.topSchools?.slice(0, 12)} layout="vertical" margin={{ left: 8, right: 48, top: 0, bottom: 0 }}>
-                  <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="name" width={200}
-                    tick={({ x, y, payload }) => (
-                      <text x={x} y={y} dy={4} textAnchor="end" fontSize={11} fill="rgba(255,255,255,0.5)" fontFamily="inherit">
-                        {payload.value?.length > 26 ? payload.value.slice(0, 26) + '…' : payload.value}
-                      </text>
-                    )}
-                    axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v} applicants`]} />
-                  <Bar dataKey="count" radius={[0, 6, 6, 0]} maxBarSize={16}
-                    label={{ position: 'right', fill: 'rgba(255,255,255,0.3)', fontSize: 10 }}>
-                    {data.topSchools?.slice(0, 12).map((_, i) => (
-                      <Cell key={i} fill={i === 0 ? C.amber : i === 1 ? '#94a3b8' : i === 2 ? '#cd7c3a' : C.blue}
-                        fillOpacity={1 - i * 0.05} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <CardTitle sub="top schools by applicant count · background heat = relative volume">Top Feeder Schools</CardTitle>
+              <FeederSchoolHeatList schools={data.topSchools?.slice(0, 12) || []} />
             </Card>
 
             {/* Student No + Disability stacked */}
@@ -598,51 +1229,29 @@ const vals = (data?.gradeDistribution || []).reduce((s, d) => ({ sum: s.sum + d.
             </div>
           </div>
 
-          {/* ══ ROW 7 — Radar (major distribution shape) + Nationality + Application Status ══ */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+          {/* ══ ROW 7 — Major DNA + Nationality ══ */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
 
-            {/* Radar — top 8 majors, male vs female */}
+            {/* ── Major DNA Fingerprint ── */}
             <Card>
-              <CardTitle sub="top 8 majors · male vs female shape">Major Gender Radar</CardTitle>
-              <ResponsiveContainer width="100%" height={260}>
-                <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
-                  <PolarGrid stroke="rgba(255,255,255,0.06)" />
-                  <PolarAngleAxis dataKey="major" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)', fontFamily: 'inherit' }} />
-                  <PolarRadiusAxis tick={false} axisLine={false} />
-                  <Radar name="Male"   dataKey="Male"   stroke={C.blue} fill={C.blue} fillOpacity={0.15} strokeWidth={2} />
-                  <Radar name="Female" dataKey="Female" stroke={C.pink} fill={C.pink} fillOpacity={0.12} strokeWidth={2} />
-                  <Legend wrapperStyle={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                </RadarChart>
-              </ResponsiveContainer>
+              <CardTitle sub="enrolled students only (has student ID) · each column = one trait · hover a major to highlight">
+                Major DNA Fingerprint — Enrolled
+              </CardTitle>
+              <MajorDNAChart dna={data.majorDNA || []} />
             </Card>
 
             {/* Nationality */}
             <Card>
-              <CardTitle sub="top nationalities">Nationality Breakdown</CardTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
-                {data.nationalityData?.slice(0, 10).map((n, i) => (
-                  <PctRow key={n.name} label={n.name?.trim()} count={n.count} total={data.total}
-                    color={i === 0 ? C.blue : i < 3 ? C.cyan : 'rgba(255,255,255,0.3)'} bold={i < 2} />
-                ))}
-              </div>
-            </Card>
-
-            {/* Application Status */}
-            <Card>
-              <CardTitle sub="breakdown of application outcomes">Application Status</CardTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
-                {data.statusData?.map((s, i) => {
-                  const color = s.name?.toLowerCase().includes('accept') ? C.green
-                    : s.name?.toLowerCase().includes('reject') ? C.red
-                    : s.name?.toLowerCase().includes('fail') ? C.orange
-                    : s.name?.toLowerCase().includes('abstain') ? 'rgba(255,255,255,0.3)'
-                    : MAJOR_COLORS[i % MAJOR_COLORS.length]
-                  return <PctRow key={s.name} label={s.name} count={s.count} total={data.total} color={color} />
-                })}
-              </div>
+              <CardTitle sub="top 10 nationalities · hover to explore">Nationality Breakdown</CardTitle>
+              <NationalitySpectrum data={data.nationalityData || []} total={data.total} />
             </Card>
           </div>
+
+          {/* ══ ROW 8 — Application Status Pipeline (full width) ══ */}
+          <Card style={{ marginBottom: '14px' }}>
+            <CardTitle sub="applicant fate at each decision stage · hover to inspect">Application Status Pipeline</CardTitle>
+            <FatePipeline statusData={data.statusData} total={data.total} />
+          </Card>
         </>
       )}
 

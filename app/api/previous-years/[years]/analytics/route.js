@@ -165,7 +165,64 @@ let students = []
   // ── Application Status ──
   const statusCounts = groupBy(students, 'application_status')
   const statusData = toSorted(statusCounts)
+// ── Enrollment Funnel by Major ──
+  const funnelMap = {}
+  students.forEach(s => {
+    const maj = s.major || 'Unknown'
+    if (!funnelMap[maj]) funnelMap[maj] = { major: maj, total: 0, accepted: 0, enrolled: 0 }
+    funnelMap[maj].total++
+    const status = (s.application_status || '').toLowerCase()
+    if (status.includes('accept') || status.includes('abstain')) funnelMap[maj].accepted++
+    if (s.student_no && s.student_no.trim() !== '') funnelMap[maj].enrolled++
+  })
+  const enrollmentFunnel = Object.values(funnelMap)
+    .map(m => ({
+      ...m,
+      acceptRate:   m.total   ? Math.round(m.accepted / m.total   * 100) : 0,
+      enrollRate:   m.total   ? Math.round(m.enrolled / m.total   * 100) : 0,
+      convRate:     m.accepted ? Math.round(m.enrolled / m.accepted * 100) : 0,
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 14)
 
+  // ── Major DNA — enrolled students only (has student_no) ──
+  const enrolledDnaMap = {}
+  students.filter(s => s.student_no && s.student_no.trim() !== '').forEach(s => {
+    const maj = s.major || 'Unknown'
+    if (!enrolledDnaMap[maj]) enrolledDnaMap[maj] = {
+      major: maj, total: 0,
+      male: 0, female: 0,
+      tawjihiSum: 0, tawjihiCount: 0,
+      private: 0, governmental: 0,
+      governorates: {}
+    }
+    const d = enrolledDnaMap[maj]
+    d.total++
+    if (s.gender === 'Male') d.male++
+    else if (s.gender === 'Female') d.female++
+    const g = parseFloat(s.tawjihi_average)
+    if (!isNaN(g)) { d.tawjihiSum += g; d.tawjihiCount++ }
+    const st = (s.school_type || '').toLowerCase()
+    if (st === 'private') d.private++
+    else if (st === 'governmental') d.governmental++
+    const gov = s.governorate_certificate || 'Unknown'
+    d.governorates[gov] = (d.governorates[gov] || 0) + 1
+  })
+
+  const majorDNA = Object.values(enrolledDnaMap)
+    .filter(m => m.total >= 5)
+    .map(m => ({
+      major: m.major,
+      total: m.total,
+      genderRatio:  m.total ? Math.round(m.male / m.total * 100) : 50,
+      avgTawjihi:   m.tawjihiCount ? Math.round((m.tawjihiSum / m.tawjihiCount) * 10) / 10 : 0,
+      privateRatio: m.total ? Math.round(m.private / m.total * 100) : 0,
+      enrollRate:   0,
+      topGov:       Object.entries(m.governorates).sort((a,b) => b[1]-a[1])[0]?.[0] || 'Unknown',
+      topGovPct:    m.total ? Math.round((Object.entries(m.governorates).sort((a,b) => b[1]-a[1])[0]?.[1] || 0) / m.total * 100) : 0,
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 16)
   // ── Tawjihi avg by major (top 10) ──
   const majorAvgMap = {}
   students.forEach(s => {
@@ -205,5 +262,7 @@ let students = []
     nationalityData,
     statusData,
     majorAvgData,
+    enrollmentFunnel,
+    majorDNA,
   })
 }
