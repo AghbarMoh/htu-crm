@@ -368,14 +368,21 @@ function OutreachVisitsTab() {
     card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' },
     th: { textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(255,255,255,0.07)' },
     td: { padding: '12px 16px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    input: { width: '100%', background: '#12121c', border: '1px solid #23233a', borderRadius: '8px', padding: '9px 12px', color: '#e8e8f0', fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
+    input: { width: '100%', background: '#12121c', border: '1px solid #23233a', borderRadius: '8px', padding: '9px 12px', color: '#e8e8f0', fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', colorScheme: 'dark' },
     label: { display: 'block', fontSize: '12px', fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' },
     modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, backdropFilter: 'blur(4px)' },
     modalCard: { background: '#181824', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '480px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', maxHeight: '90vh', overflowY: 'auto' },
   }
 
   const dateRange = (v) => v.date_from && v.date_to ? `${formatDate(v.date_from)} → ${formatDate(v.date_to)}` : '—'
-  const timeRange = (v) => v.time_from && v.time_to ? `${v.time_from} → ${v.time_to}` : '—'
+  const formatTime = (t) => {
+    if (!t) return '—'
+    const [h, m] = t.split(':').map(Number)
+    const ampm = h >= 12 ? 'PM' : 'AM'
+    const h12 = h % 12 || 12
+    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+  }
+  const timeRange = (v) => v.time_from && v.time_to ? `${formatTime(v.time_from)} → ${formatTime(v.time_to)}` : '—'
 
   function formatDate(d) { if (!d) return '—'; const [y,m,dd] = d.split('-'); if (!y||!m||!dd) return d; const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return `${parseInt(dd)} ${ms[parseInt(m)-1]} ${y}` }
 
@@ -524,8 +531,8 @@ function OutreachVisitsTab() {
               <div><label style={s.label}>Date To *</label><input type='date' value={form.date_to} onChange={e => setForm({ ...form, date_to: e.target.value })} style={s.input} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div><label style={s.label}>Time From</label><input type='time' value={form.time_from} onChange={e => setForm({ ...form, time_from: e.target.value })} style={{ ...s.input, appearance: 'auto' }} /></div>
-              <div><label style={s.label}>Time To</label><input type='time' value={form.time_to} onChange={e => setForm({ ...form, time_to: e.target.value })} style={{ ...s.input, appearance: 'auto' }} /></div>
+              <div><label style={s.label}>Time From</label><input type='time' value={form.time_from} onChange={e => setForm({ ...form, time_from: e.target.value })} style={{ ...s.input, appearance: 'auto', colorScheme: 'dark' }} /></div>
+              <div><label style={s.label}>Time To</label><input type='time' value={form.time_to} onChange={e => setForm({ ...form, time_to: e.target.value })} style={{ ...s.input, appearance: 'auto', colorScheme: 'dark' }} /></div>
             </div>
             <div><label style={s.label}>Companion</label><input type="text" value={form.companion} onChange={e => setForm({ ...form, companion: e.target.value })} placeholder='e.g. Aghbar' style={s.input} /></div>
             <div><label style={s.label}>Status (New/Repeated)</label><select value={form.connection_status} onChange={e => setForm({ ...form, connection_status: e.target.value })} style={s.input}><option value="New" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>New</option><option value="Repeated" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>Repeated</option></select></div>
