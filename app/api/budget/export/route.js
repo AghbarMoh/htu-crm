@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import fs from 'fs'
 import path from 'path'
-
+import { requireAuth } from '@/lib/auth-guard'
 function esc(str) {
   if (str === null || str === undefined) return '—'
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -114,6 +114,9 @@ ${req.notes ? `<div class="section"><div class="section-title">Notes</div><div c
 
 export async function GET(req) {
   try {
+    const { errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const supabase = createServiceClient()
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
@@ -131,7 +134,7 @@ export async function GET(req) {
         date:        searchParams.get('date') ?? '',
         hour_from:   searchParams.get('hour_from') ?? '',
         hour_to:     searchParams.get('hour_to') ?? '',
-        cost_fields: costFields ? JSON.parse(decodeURIComponent(costFields)) : [],
+        cost_fields: costFields ? (() => { try { return JSON.parse(decodeURIComponent(costFields)) } catch { return [] } })() : [],
         total:       searchParams.get('total') ?? '0',
         notes:       searchParams.get('notes') ?? '',
       }

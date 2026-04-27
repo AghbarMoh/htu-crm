@@ -30,9 +30,16 @@ export default function AnalyticsPage() {
       const data = await res.json()
       if (data) {
         setApplicants(data.applicants || [])
-        const completedVisits = (data.visits || []).filter(visit =>
+        const completedVisitsRaw = (data.visits || []).filter(visit =>
           (data.completions || []).some(comp => comp.visit_id === visit.id)
         )
+        const seenSchools = new Set()
+        const completedVisits = completedVisitsRaw.filter(v => {
+          const key = (v.school_name || '').trim().toLowerCase()
+          if (seenSchools.has(key)) return false
+          seenSchools.add(key)
+          return true
+        })
         setVisits(completedVisits)
         setVisitStudents(data.students || [])
         setContacts(data.contacts || [])

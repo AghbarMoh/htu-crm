@@ -137,69 +137,106 @@ export default function ContactsPage() {
         <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', marginLeft: '8px' }}>{filteredContacts.length} contacts</span>
       </div>
 
-      <div style={s.card}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-  <tr>
-    {['#', 'Full Name', 'Role', 'School', 'Email', 'Phone', 'Notes', 'Actions'].map(h => (
-      <th key={h} style={s.th}>{h}</th>
-    ))}
-  </tr>
-</thead>
-<tbody>
-  {loading ? (
-    <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Loading...</td></tr>
-  ) : filteredContacts.length === 0 ? (
-    <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>No contacts found</td></tr>
-  ) : (
-              filteredContacts.map((contact, i) => (
-  <tr key={contact.id}
-    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-  >
-    <td style={{ ...s.td, width: '40px', color: 'rgba(255,255,255,0.3)' }}>{i + 1}</td>
-    <td dir="auto" style={{ ...s.td, color: '#ffffff', fontWeight: '500' }}>{contact.full_name}</td>
-                  <td style={s.td}>
-                    <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)', fontSize: '13px' }}>Loading...</div>
+      ) : filteredContacts.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)', fontSize: '13px' }}>No contacts found</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+          {filteredContacts.map((contact) => {
+            const roleColors = {
+              'Counselor': { bg: 'rgba(139,92,246,0.12)', color: '#a78bfa' },
+              'Manager':   { bg: 'rgba(59,130,246,0.12)',  color: '#60a5fa' },
+              'Ministry':  { bg: 'rgba(245,158,11,0.12)',  color: '#fbbf24' },
+              'Other':     { bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' },
+            }
+            const roleStyle = roleColors[contact.role] || roleColors['Other']
+
+          
+
+            return (
+              <div key={contact.id} style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: '14px',
+                padding: '18px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+                transition: 'transform 0.15s, box-shadow 0.15s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3)' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+              >
+                {/* Top: avatar + name + role */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p dir="auto" style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {contact.full_name}
+                    </p>
+                    <span style={{ fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px', background: roleStyle.bg, color: roleStyle.color }}>
                       {contact.role}
                     </span>
-                  </td>
-                  <td dir="auto" style={s.td}>{contact.school_name || '-'}</td>
-                  <td style={s.td}>
-                    {contact.email ? (
-                      <a href={"mailto:" + contact.email} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#60a5fa', textDecoration: 'none', fontSize: '13px' }}>
-                        <Mail size={13} />
-                        {contact.email}
+                  </div>
+                </div>
+
+                {/* School */}
+                {contact.school_name && (
+                  <p dir="auto" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    🏫 {contact.school_name}
+                  </p>
+                )}
+
+                {/* Notes */}
+                {contact.notes && (
+                  <p dir="auto" style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }}>
+                    {contact.notes}
+                  </p>
+                )}
+
+                {/* Divider */}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+
+                {/* Action row */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {contact.email && (
+                      <a href={'mailto:' + contact.email} style={{
+                        display: 'flex', alignItems: 'center', gap: '5px',
+                        background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)',
+                        borderRadius: '8px', padding: '6px 10px', fontSize: '11px', fontWeight: '600',
+                        color: '#60a5fa', textDecoration: 'none',
+                      }}>
+                        <Mail size={12} /> Email
                       </a>
-                    ) : '-'}
-                  </td>
-                  <td style={s.td}>
-                    {contact.phone ? (
-                      <a href={"https://wa.me/" + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34d399', textDecoration: 'none', fontSize: '13px' }}>
-                        <Phone size={13} />
-                        {contact.phone}
+                    )}
+                    {contact.phone && (
+                      <a href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" style={{
+                        display: 'flex', alignItems: 'center', gap: '5px',
+                        background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)',
+                        borderRadius: '8px', padding: '6px 10px', fontSize: '11px', fontWeight: '600',
+                        color: '#34d399', textDecoration: 'none',
+                      }}>
+                        <Phone size={12} /> WhatsApp
                       </a>
-                    ) : '-'}
-                  </td>
-                  <td dir="auto" style={{ ...s.td, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.notes || '-'}</td>
-                  <td style={s.td}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => handleEdit(contact)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '4px', display: 'flex' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#3b82f6'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
-                      ><Pencil size={14} /></button>
-                      <button onClick={() => handleDelete(contact.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '4px', display: 'flex' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
-                      ><Trash2 size={14} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button onClick={() => handleEdit(contact)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', padding: '4px', display: 'flex' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#3b82f6'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
+                    ><Pencil size={14} /></button>
+                    <button onClick={() => handleDelete(contact.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', padding: '4px', display: 'flex' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
+                    ><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {showForm && (
         <div style={s.modal}>

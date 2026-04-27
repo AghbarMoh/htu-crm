@@ -17,6 +17,7 @@ export default function MessagingPage() {
   const [filterPaid, setFilterPaid] = useState('all')
   const [filterMajor, setFilterMajor] = useState('all')
   const [waMessage, setWaMessage] = useState('')
+  const [listSearch, setListSearch] = useState('')
   
   // --- Campaign State ---
   const [campaignActive, setCampaignActive] = useState(false)
@@ -67,7 +68,10 @@ export default function MessagingPage() {
     return list
   }
 
-  const currentList = sourceTab === 'applicants' ? getFilteredApplicants() : sourceTab === 'contacts' ? contacts : visitStudents
+  const baseList = sourceTab === 'applicants' ? getFilteredApplicants() : sourceTab === 'contacts' ? contacts : visitStudents
+  const currentList = listSearch.trim()
+    ? baseList.filter(p => p.full_name?.toLowerCase().includes(listSearch.toLowerCase()))
+    : baseList
 
   const toggleEmail = (email) => {
     if (!email) return
@@ -164,7 +168,11 @@ export default function MessagingPage() {
         {/* Left Panel */}
         <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '16px' }}>
           <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            {[{ key: 'applicants', label: 'Applicants', icon: Users }, { key: 'visitstudents', label: 'Visit Students', icon: School }, { key: 'contacts', label: 'Contacts', icon: BookUser }].map(tab => (
+            {[
+              { key: 'applicants', label: 'Applicants', icon: Users, count: applicants.length },
+              { key: 'visitstudents', label: 'Leads', icon: School, count: visitStudents.length },
+              { key: 'contacts', label: 'Contacts', icon: BookUser, count: contacts.length }
+            ].map(tab => (
               <button key={tab.key} onClick={() => { setSourceTab(tab.key); clearSelection() }} style={{
                 display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '500', border: 'none', cursor: 'pointer',
                 background: sourceTab === tab.key ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
@@ -172,8 +180,26 @@ export default function MessagingPage() {
               }}>
                 <tab.icon size={12} />
                 {tab.label}
+                <span style={{
+                  fontSize: '10px', fontWeight: '700', padding: '1px 6px', borderRadius: '20px',
+                  background: sourceTab === tab.key ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.08)',
+                  color: sourceTab === tab.key ? '#93c5fd' : 'rgba(255,255,255,0.3)',
+                }}>{tab.count}</span>
               </button>
             ))}
+          </div>
+
+          {/* Search bar */}
+          <div style={{ position: 'relative', marginBottom: '10px' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}>
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              placeholder="Search by name..."
+              onChange={e => setListSearch(e.target.value)}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px 8px 30px', fontSize: '12px', color: '#fff', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+            />
           </div>
 
           {sourceTab === 'applicants' && (
@@ -245,9 +271,18 @@ export default function MessagingPage() {
                   {selectedEmails.length === 0 ? (
                     <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.2)' }}>Select people from the left panel</span>
                   ) : (
-                    selectedEmails.map((email, i) => (
-                      <span key={email + i} style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '11px', background: 'rgba(59,130,246,0.2)', color: '#60a5fa' }}>{email}</span>
-                    ))
+                    selectedEmails.map((email, i) => {
+                      const person = currentList.find(p => p.email === email)
+                      const initials = person?.full_name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'
+                      const colors = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ec4899','#06b6d4']
+                      const color = colors[i % colors.length]
+                      return (
+                        <span key={email + i} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px 3px 4px', borderRadius: '20px', fontSize: '11px', background: `${color}18`, border: `1px solid ${color}30`, color }}>
+                          <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: color, color: '#fff', fontSize: '8px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{initials}</span>
+                          {person?.full_name?.split(' ')[0] || email}
+                        </span>
+                      )
+                    })
                   )}
                 </div>
               </div>
@@ -315,8 +350,18 @@ export default function MessagingPage() {
               ) : (
                 // --- CAMPAIGN ACTIVE MODE ---
                 <div style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '24px', textAlign: 'center', marginTop: '10px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#10b981', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>
-                    Campaign Progress: {campaignIdx + 1} of {campaignQueue.length}
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#10b981', textTransform: 'uppercase', letterSpacing: '1px' }}>Campaign Progress</span>
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>{campaignIdx + 1} <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: '400' }}>of {campaignQueue.length}</span></span>
+                    </div>
+                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${((campaignIdx + 1) / campaignQueue.length) * 100}%`, background: 'linear-gradient(90deg, #10b981, #34d399)', borderRadius: '4px', transition: 'width 0.4s ease' }} />
+                    </div>
+                  </div>
+
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '800', color: '#fff', margin: '0 auto 16px', boxShadow: '0 0 20px rgba(16,185,129,0.3)' }}>
+                    {campaignQueue[campaignIdx]?.full_name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
                   </div>
                   
                   <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>

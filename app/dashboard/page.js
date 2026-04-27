@@ -666,10 +666,10 @@ const clean = s => String(s).toLowerCase().replace(/[^a-z0-9\u0600-\u06FF\s]/g, 
                       </svg>
                       {/* Center text */}
                       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                        <span style={{ fontSize: '24px', fontWeight: '800', color: '#ffffff', letterSpacing: '-1px', lineHeight: '1', textShadow: `0 0 14px ${accent}` }}>
+                        <span style={{ fontSize: '24px', fontWeight: '800', color: '#ffffff', letterSpacing: '-1px', lineHeight: '1', textShadow: `0 0 14px ${accent}, 0 0 30px rgba(0,0,0,0.8)` }}>
                           {stage.value.toLocaleString()}
                         </span>
-                        <span style={{ fontSize: '10px', fontWeight: '600', color: accent, marginTop: '3px', textShadow: `0 0 8px ${accent}` }}>
+                        <span style={{ fontSize: '10px', fontWeight: '800', color: '#ffffff', marginTop: '3px', background: `${accent}cc`, padding: '1px 6px', borderRadius: '20px' }}>
                           {Math.round(pct)}%
                         </span>
                       </div>
@@ -770,8 +770,8 @@ const clean = s => String(s).toLowerCase().replace(/[^a-z0-9\u0600-\u06FF\s]/g, 
                       <circle cx="45" cy="45" r="38" fill={`url(#${uid}_glow)`} />
                     </svg>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                      <span style={{ fontSize: '22px', fontWeight: '800', color: '#ffffff', letterSpacing: '-1px', lineHeight: '1', textShadow: `0 0 12px ${accent}` }}>{value}</span>
-                      <span style={{ fontSize: '9px', fontWeight: '600', color: accent, marginTop: '2px' }}>{pct}%</span>
+                      <span style={{ fontSize: '22px', fontWeight: '800', color: '#ffffff', letterSpacing: '-1px', lineHeight: '1', textShadow: `0 0 12px ${accent}, 0 0 30px rgba(0,0,0,0.8)` }}>{value}</span>
+                      <span style={{ fontSize: '9px', fontWeight: '800', color: '#ffffff', marginTop: '2px', background: `${accent}cc`, padding: '1px 6px', borderRadius: '20px' }}>{pct}%</span>
                     </div>
                   </div>
                   <p style={{ margin: 0, fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>{label}</p>
@@ -876,7 +876,7 @@ const clean = s => String(s).toLowerCase().replace(/[^a-z0-9\u0600-\u06FF\s]/g, 
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{
                         fontSize: '12px', color: isCompleting ? 'rgba(255,255,255,0.4)' : '#ffffff',
-                        margin: '0 0 2px 0', wordBreak: 'break-word',
+                        margin: '0 0 2px 0', wordBreak: 'break-word', whiteSpace: 'normal',
                         textDecoration: isCompleting ? 'line-through' : 'none',
                         transition: 'all 0.3s',
                       }}>{task.title}</p>

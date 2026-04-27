@@ -11,7 +11,17 @@ export async function POST(req) {
 
   try {
     const { messages } = await req.json()
-    const latestMessage = messages[messages.length - 1].text
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json({ error: 'Invalid messages' }, { status: 400 })
+    }
+    const trimmedMessages = messages.slice(-20) // cap history at 20 messages
+    const latestMessage = trimmedMessages[trimmedMessages.length - 1]?.text
+    if (!latestMessage || typeof latestMessage !== 'string') {
+      return NextResponse.json({ error: 'Invalid message' }, { status: 400 })
+    }
+    if (latestMessage.length > 2000) {
+      return NextResponse.json({ error: 'Message too long' }, { status: 400 })
+    }
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash-lite',
@@ -39,7 +49,7 @@ Do not do anything other than write emails or ask clarifying questions about ema
       },
     })
 
-    const history = messages.slice(1, -1).map(msg => ({
+    const history = trimmedMessages.slice(1, -1).map(msg => ({
       role: msg.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: msg.text }],
     }))

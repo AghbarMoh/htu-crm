@@ -27,9 +27,18 @@ supabase.from('applicants').select('*'),
   ])
 
   const applicants = allApplicants || []
-  const completedVisits = (visits || []).filter(v => 
+  const completedVisitsRaw = (visits || []).filter(v => 
     (completions || []).some(c => c.visit_id === v.id)
   )
+
+  // Deduplicate by school_name — a multi-day visit should count as one
+  const seenSchools = new Set()
+  const completedVisits = completedVisitsRaw.filter(v => {
+    const key = (v.school_name || '').trim().toLowerCase()
+    if (seenSchools.has(key)) return false
+    seenSchools.add(key)
+    return true
+  })
 
   const stats = {
     totalApplicants: (completedApplicants || []).length,

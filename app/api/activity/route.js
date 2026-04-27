@@ -26,7 +26,6 @@ export async function POST(req) {
   const { errorResponse } = await requireAuth()
   if (errorResponse) return errorResponse
 
-  const supabase = createServiceClient()
   const { action, entity_type, entity_name, details } = await req.json()
 
   const { error } = await supabase.from('activity_log').insert([{

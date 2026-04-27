@@ -307,6 +307,34 @@ const cancelledVisits = filteredVisits.filter(v => v.is_cancelled)
         </div>
       </div>
 
+      {/* ── 4 Stat Pills ── */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {[
+          { label: 'Pending', value: visits.filter(v => !completions[v.id] && !v.is_cancelled).length, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.25)' },
+          { label: 'Completed', value: visits.filter(v => completions[v.id] && !v.is_cancelled).length, color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.25)' },
+          { label: 'Cancelled', value: visits.filter(v => v.is_cancelled).length, color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.25)' },
+          { label: 'This Month', value: visits.filter(v => {
+              if (!v.visit_date || v.is_cancelled) return false
+              const d = new Date(v.visit_date)
+              const now = new Date()
+              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+            }).length, color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.25)' },
+        ].map(pill => (
+          <div key={pill.label} style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            background: pill.bg, border: `1px solid ${pill.border}`,
+            borderRadius: '12px', padding: '10px 18px',
+          }}>
+            <span style={{ fontSize: '22px', fontWeight: '800', color: pill.color, letterSpacing: '-1px', lineHeight: '1' }}>
+              {pill.value}
+            </span>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: 'rgba(255,255,255,0.45)' }}>
+              {pill.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
         {['all', 'School Tours', 'School visits at HTU Campus', 'School Fairs'].map(type => (
           <button key={type} onClick={() => setFilterType(type)} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '500', border: 'none', cursor: 'pointer', background: filterType === type ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)', color: filterType === type ? '#3b82f6' : 'rgba(255,255,255,0.4)', transition: 'all 0.15s' }}>
@@ -321,56 +349,123 @@ const cancelledVisits = filteredVisits.filter(v => v.is_cancelled)
           {isPendingCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
         </button>
       </div>
-      {!isPendingCollapsed && <div style={{ ...s.card, marginBottom: '32px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-  <tr>{['#', 'School Name', 'Type', 'School Type', 'City', 'Date', 'Time', 'Status', 'Companion','Accomplished', 'Actions'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
-</thead>
-<tbody>
-  {loading ? <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>Loading...</td></tr> : 
-   pendingVisits.length === 0 ? <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', padding: '40px' }}>No pending visits</td></tr> :
-             pendingVisits.map((visit, i) => (
-  <tr key={visit.id} style={{ transition: 'background 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-    <td style={{ ...s.td, width: '40px', color: 'rgba(255,255,255,0.3)' }}>{i + 1}</td>
-    <td style={{ ...s.td, color: '#ffffff', fontWeight: '500', direction: getTextDir(visit.school_name), textAlign: getTextDir(visit.school_name) === 'rtl' ? 'right' : 'left' }}>{visit.school_name}</td>
-                  <td style={s.td}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{visit.type}</span></td>
-                  <td style={s.td}><span style={{ textTransform: 'capitalize' }}>{visit.private_or_public || '-'}</span></td>
-                  <td style={s.td}>{visit.city || '-'}</td>
-                  <td style={s.td}>{formatDate(visit.visit_date)}</td>
-                  <td style={s.td}>{visit.visit_time || '-'}</td>
-                  <td style={s.td}><span style={{ color: visit.connection_status === 'New' ? '#10b981' : '#f59e0b', fontWeight: '500' }}>{visit.connection_status || 'New'}</span></td>
-                  <td style={s.td}>{visit.companion || '-'}</td>
-                  <td style={s.td}>
-                    <button onClick={() => handleMarkDone(visit)} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                      <CheckCircle size={13} /> Mark Done
-                    </button>
-                  </td>
-                  <td style={s.td}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => { 
-  setQrVisit(visit); 
-  setShowQRModal(true);
-  if (!visit.qr_sent) {
-    fetch('/api/visits', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'mark_qr_sent', payload: { id: visit.id } })
-    }).then(() => {
-      setVisits(prev => prev.map(v => v.id === visit.id ? { ...v, qr_sent: true } : v))
-    })
-  }
-}} title="QR Kiosk" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6' }}><QrCode size={14} /></button>
-                      <button onClick={() => handleEdit(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Pencil size={14} /></button>
-                      <button onClick={() => handleCancel(visit.id)} title="Cancel Visit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b' }}>✕</button>
-                      <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><Trash2 size={14} /></button>
-                      <button onClick={() => window.open(`/api/visits/export?visit_id=${visit.id}`, '_blank')} title="Export School Report" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)' }}><FileText size={14} /></button>
+{!isPendingCollapsed && (
+        <div style={{ marginBottom: '32px' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)', fontSize: '13px' }}>Loading...</div>
+          ) : pendingVisits.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)', fontSize: '13px' }}>No pending visits</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+              {pendingVisits.map((visit) => {
+                const today = new Date(); today.setHours(0,0,0,0)
+                const visitDate = new Date(visit.visit_date); visitDate.setHours(0,0,0,0)
+                const diffDays = (visitDate - today) / (1000 * 60 * 60 * 24)
+                const isOverdue = visitDate < today
+                const isSoon = !isOverdue && diffDays <= 2
+                const isRepeated = visit.connection_status === 'Repeated'
+                const accentColor = isOverdue ? '#ef4444' : isSoon ? '#f59e0b' : isRepeated ? '#10b981' : '#8b5cf6'
+                const typeColors = {
+                  'School Tours': { bg: 'rgba(59,130,246,0.12)', color: '#60a5fa' },
+                  'School visits at HTU Campus': { bg: 'rgba(139,92,246,0.12)', color: '#a78bfa' },
+                  'School Fairs': { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
+                }
+                const typeStyle = typeColors[visit.type] || { bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }
+
+                return (
+                  <div key={visit.id} style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    borderTop: `3px solid ${accentColor}`,
+                    borderRadius: '14px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    transition: 'transform 0.15s, box-shadow 0.15s',
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.3)` }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+                  >
+                    {/* Top row: type pill + status badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '700', padding: '3px 9px', borderRadius: '20px', background: typeStyle.bg, color: typeStyle.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65%' }}>
+                        {visit.type}
+                      </span>
+                      <span style={{ fontSize: '10px', fontWeight: '700', padding: '3px 9px', borderRadius: '20px', whiteSpace: 'nowrap',
+                        background: isOverdue ? 'rgba(239,68,68,0.15)' : isSoon ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.06)',
+                        color: isOverdue ? '#f87171' : isSoon ? '#fbbf24' : 'rgba(255,255,255,0.3)',
+                      }}>
+                        {isOverdue ? '⚠ Overdue' : isSoon ? '⏰ Soon' : isRepeated ? '↩ Repeated' : '✦ New'}
+                      </span>
                     </div>
-                  </td>
-                </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>}
+
+                    {/* School name */}
+                    <div>
+                      <p style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0', lineHeight: '1.3', direction: getTextDir(visit.school_name), textAlign: getTextDir(visit.school_name) === 'rtl' ? 'right' : 'left' }}>
+                        {visit.school_name}
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        {visit.city && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>📍 {visit.city}</span>}
+                        {visit.private_or_public && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', textTransform: 'capitalize' }}>· {visit.private_or_public}</span>}
+                      </div>
+                    </div>
+
+                    {/* Date + time + companion */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '11px', color: accentColor, fontWeight: '600' }}>📅 {formatDate(visit.visit_date)}</span>
+                        {visit.visit_time && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>· {visit.visit_time}</span>}
+                      </div>
+                      {visit.companion && (
+                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>👤 {visit.companion}</span>
+                      )}
+                      
+                    </div>
+
+                    {/* Divider */}
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <button onClick={() => handleMarkDone(visit)} style={{
+                        display: 'flex', alignItems: 'center', gap: '5px',
+                        background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)',
+                        borderRadius: '8px', padding: '6px 12px', fontSize: '11px', fontWeight: '600',
+                        color: '#34d399', cursor: 'pointer'
+                      }}>
+                        <CheckCircle size={12} /> Mark Done
+                      </button>
+
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <button onClick={() => {
+                          setQrVisit(visit); setShowQRModal(true)
+                          if (!visit.qr_sent) {
+                            fetch('/api/visits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mark_qr_sent', payload: { id: visit.id } }) })
+                              .then(() => setVisits(prev => prev.map(v => v.id === visit.id ? { ...v, qr_sent: true } : v)))
+                          }
+                        }} title="QR Kiosk" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', padding: '4px', display: 'flex' }}>
+                          <QrCode size={14} />
+                        </button>
+                        <button onClick={() => window.open(`/api/visits/export?visit_id=${visit.id}`, '_blank')} title="Export" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', padding: '4px', display: 'flex' }}>
+                          <FileText size={14} />
+                        </button>
+                        <button onClick={() => handleEdit(visit)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', padding: '4px', display: 'flex' }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button onClick={() => handleCancel(visit.id)} title="Cancel" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b', padding: '4px', display: 'flex', fontSize: '13px' }}>✕</button>
+                        <button onClick={() => handleDelete(visit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', padding: '4px', display: 'flex' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', cursor: 'pointer' }} onClick={() => setIsCompletedCollapsed(!isCompletedCollapsed)}>
         <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#10b981' }}>Completed Visits ({completedVisits.length})</h2>
