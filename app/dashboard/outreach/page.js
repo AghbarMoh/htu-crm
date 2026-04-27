@@ -531,8 +531,8 @@ function OutreachVisitsTab() {
               <div><label style={s.label}>Date To *</label><input type='date' value={form.date_to} onChange={e => setForm({ ...form, date_to: e.target.value })} style={s.input} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div><label style={s.label}>Time From</label><input type='time' value={form.time_from} onChange={e => setForm({ ...form, time_from: e.target.value })} style={{ ...s.input, appearance: 'auto', colorScheme: 'dark' }} /></div>
-              <div><label style={s.label}>Time To</label><input type='time' value={form.time_to} onChange={e => setForm({ ...form, time_to: e.target.value })} style={{ ...s.input, appearance: 'auto', colorScheme: 'dark' }} /></div>
+              <div><label style={s.label}>Time From</label><input type='time' value={form.time_from} onChange={e => setForm({ ...form, time_from: e.target.value })} style={{ ...s.input, appearance: 'auto' }} /></div>
+              <div><label style={s.label}>Time To</label><input type='time' value={form.time_to} onChange={e => setForm({ ...form, time_to: e.target.value })} style={{ ...s.input, appearance: 'auto' }} /></div>
             </div>
             <div><label style={s.label}>Companion</label><input type="text" value={form.companion} onChange={e => setForm({ ...form, companion: e.target.value })} placeholder='e.g. Aghbar' style={s.input} /></div>
             <div><label style={s.label}>Status (New/Repeated)</label><select value={form.connection_status} onChange={e => setForm({ ...form, connection_status: e.target.value })} style={s.input}><option value="New" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>New</option><option value="Repeated" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>Repeated</option></select></div>

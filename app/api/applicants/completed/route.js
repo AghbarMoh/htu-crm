@@ -38,6 +38,8 @@ export async function POST(req) {
 
   if (action === 'delete_all_completed') {
     const { count } = payload
+    await supabase.from('visit_students').update({ is_completed_matched: false, matched_completed_applicant_id: null }).not('matched_completed_applicant_id', 'is', null)
+    await supabase.from('completed_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000')
     const { error } = await supabase.from('completed_applicants').delete().neq('id', '00000000-0000-0000-0000-000000000000')
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     await logActivity('Deleted all completed applicants', 'applicant', 'All', `Deleted ${count} completed applicants`)
