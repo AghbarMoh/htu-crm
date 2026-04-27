@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Users, GraduationCap, Activity, AlertCircle, ChevronDown } from 'lucide-react'
 import {
@@ -163,8 +163,7 @@ function GradeTooltip({ active, payload, label }) {
 }
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
-export default function PreviousYearsAnalyticsPage() {
-  const searchParams  = useSearchParams()
+function PreviousYearsAnalyticsPage() {  const searchParams  = useSearchParams()
   const router        = useRouter()
   const initialYear   = searchParams.get('year') || ''
 
@@ -666,5 +665,13 @@ const vals = (data?.gradeDistribution || []).reduce((s, d) => ({ sum: s.sum + d.
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px }
       `}</style>
     </div>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div style={{ color: 'rgba(255,255,255,0.3)', padding: '40px', textAlign: 'center' }}>Loading...</div>}>
+      <PreviousYearsAnalyticsPage />
+    </Suspense>
   )
 }

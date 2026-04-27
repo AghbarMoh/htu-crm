@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Search, ChevronLeft, ChevronRight, GraduationCap, BarChart2, SlidersHorizontal, X } from 'lucide-react'
 
@@ -23,7 +23,7 @@ const pill = (label, color) => (
   }}>{label}</span>
 )
 
-export default function YearStudentsPage() {
+function YearStudentsPage() {
 const { years: year } = useParams()
   const router   = useRouter()
 
@@ -406,5 +406,13 @@ const { years: year } = useParams()
         input:focus { border-color: rgba(59,130,246,0.35) !important; }
       `}</style>
     </div>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div style={{ color: 'rgba(255,255,255,0.3)', padding: '40px', textAlign: 'center' }}>Loading...</div>}>
+      <YearStudentsPage />
+    </Suspense>
   )
 }
